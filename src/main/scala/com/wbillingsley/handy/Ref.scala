@@ -84,6 +84,15 @@ sealed abstract class Ref[+T] {
       case r:RefNothing => r
     }
   }
+
+  def foreach(func: T => Any) {
+    fetch match {
+      case RefItself(item) => {
+        func(item)
+      }
+      case r:RefNothing => r
+    }
+  }
 }
 
 /**

@@ -56,6 +56,14 @@
       <version>1.6.9</version>
       <scope>test</scope>
     </dependency>
+
+      <!-- Makes SBT run JUnit tests -->
+      <dependency>
+          <groupId>com.novocode</groupId>
+          <artifactId>junit-interface</artifactId>
+          <version>0.7</version>
+          <scope>test</scope>
+      </dependency>
   </dependencies>
 
   <build>
