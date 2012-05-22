@@ -39,7 +39,7 @@ object Ref {
     }
   }
 
-  def fromOptionItem[T](opt: Option[T]):Ref[T] = {
+  def fromOptionItem[T](opt: Option[T]):ResolvedRef[T] = {
     opt match {
       case Some(item) => RefItself(item)
       case None => RefNone
@@ -93,6 +93,8 @@ sealed abstract class Ref[+T] {
       case r:RefNothing => r
     }
   }
+
+  def getId:Option[Any]  
 }
 
 /**
@@ -117,6 +119,7 @@ abstract class UnresolvedRef[+T] extends Ref[T] {
 abstract class RefNothing extends ResolvedRef[Nothing] {
   def isEmpty = true
   def toOption = None
+  def getId = None
 }
 
 /**
@@ -124,6 +127,7 @@ abstract class RefNothing extends ResolvedRef[Nothing] {
  */
 case class RefById[T, K](clazz : scala.Predef.Class[T], id: K) extends UnresolvedRef[T] {
   def toOption = fetch.toOption
+  def getId = Some(id)
 }
 
 /**
@@ -142,6 +146,14 @@ object RefNone extends RefNothing
  * A reference to an item that has been fetched.
  */
 case class RefItself[T](item: T) extends ResolvedRef[T] {
+  type hasId = { def id:Any }
+  
   def toOption = Some(item)
   def isEmpty = false
+  
+  def getId = {
+    if (item.isInstanceOf[hasId]) {
+      Some(item.asInstanceOf[hasId].id)
+    } else None
+  }
 }
