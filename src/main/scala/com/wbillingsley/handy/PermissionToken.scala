@@ -71,6 +71,13 @@ class PermissionToken[T](val who: T) {
     case pr:PermRefused => false
   }
 
+  def perform[A >: RefFailed](f: => A):A = {
+    status match {
+      case pa:PermApproved => f
+      case pr:PermRefused => RefFailed(pr.reason, Some(PermissionWasRefused(this)))
+    }
+  }
+
   def reason = status.reason
 
   def toTuple = status.toTuple

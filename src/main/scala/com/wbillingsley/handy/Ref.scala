@@ -94,6 +94,15 @@ sealed abstract class Ref[+T] {
     }
   }
 
+  def orIfNone[B >: T](f: => Ref[B]):Ref[B] = {
+    val fetched = fetch
+    if (fetched == RefNone) {
+      f
+    } else {
+      fetched
+    }
+  }
+
   def getId:Option[Any]  
 }
 
