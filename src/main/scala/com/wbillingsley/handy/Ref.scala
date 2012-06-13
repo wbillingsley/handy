@@ -149,7 +149,7 @@ case class RefFailed(msg: String, exception: Option[Throwable]) extends RefNothi
 /**
  * Singleton to say there's nothing there.
  */
-object RefNone extends RefNothing
+case object RefNone extends RefNothing
 
 /**
  * A reference to an item that has been fetched.
