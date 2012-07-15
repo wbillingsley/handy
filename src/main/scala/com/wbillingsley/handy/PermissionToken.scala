@@ -30,6 +30,8 @@ sealed abstract class PermResponse {
   def unapply:Option[(Boolean, String)]
 
   def toTuple:(Boolean, String)
+
+  def may: Boolean
   
   def reason:String
 }
@@ -38,12 +40,16 @@ case class PermApproved(reason: String) extends PermResponse {
   def unapply = Some(true, reason)
 
   def toTuple:(Boolean, String) = (true, reason)
+
+  def may = true
 }
 
 case class PermRefused(reason: String) extends PermResponse {
   def unapply = Some(false, reason)
 
   def toTuple:(Boolean, String) = (false, reason)
+
+  def may = false
 }
 
 class PermissionToken[T](val who: T) {
