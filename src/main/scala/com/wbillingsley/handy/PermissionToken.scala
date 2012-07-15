@@ -51,19 +51,32 @@ class PermissionToken[T](val who: T) {
   private val approvals = mutable.Map.empty[Permission[T], PermApproved]
 
   private var status:PermResponse = PermApproved("No permissions have been asked for")
-  
+
+  /**
+   * Requests a permission; if it is denied this token goes into a refused state
+   * @param perm
+   * @return
+   */
   def request(perm:Permission[T]) = {
     if (may) {
-      status = approvals.getOrElse(perm, {
-        val pr = perm.resolve(who)
-        pr match {
-          case pa:PermApproved => approvals.put(perm, pa)
-          case _ => { /* do nothing */ }
-        }
-        pr
-      })
+      status = approvals.getOrElse(perm, check(perm))
     }
     this
+  }
+
+  /**
+   * Checks if a permission is approved, but only remembers a success not a failure.
+   * (So future requests for permissions are not denied)
+   * @param perm
+   * @return
+   */
+  def check(perm:Permission[T]) = {
+    val pr = perm.resolve(who)
+    pr match {
+      case pa:PermApproved => approvals.put(perm, pa)
+      case _ => { /* do nothing */ }
+    }
+    pr
   }
   
   def may = status match {
