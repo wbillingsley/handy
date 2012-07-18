@@ -20,7 +20,7 @@ package com.wbillingsley.handy
 
 import scala.collection.mutable
 
-case class PermissionWasRefused[T](token:PermissionToken[T]) extends Exception
+case class PermissionWasRefused[T](resp:PermResponse) extends Exception
 
 abstract class Permission[T] {
   def resolve(who: T):PermResponse
@@ -34,6 +34,8 @@ sealed abstract class PermResponse {
   def may: Boolean
   
   def reason:String
+
+  def perform[A >: RefFailed](f: => A):A
 }
 
 case class PermApproved(reason: String) extends PermResponse {
@@ -42,6 +44,10 @@ case class PermApproved(reason: String) extends PermResponse {
   def toTuple:(Boolean, String) = (true, reason)
 
   def may = true
+
+  def perform[A >: RefFailed](f: => A):A = {
+    f
+  }
 }
 
 case class PermRefused(reason: String) extends PermResponse {
@@ -50,6 +56,10 @@ case class PermRefused(reason: String) extends PermResponse {
   def toTuple:(Boolean, String) = (false, reason)
 
   def may = false
+
+  def perform[A >: RefFailed](f: => A):A = {
+    RefFailed(reason, Some(PermissionWasRefused(this)))
+  }
 }
 
 class PermissionToken[T](val who: T) {
@@ -91,10 +101,7 @@ class PermissionToken[T](val who: T) {
   }
 
   def perform[A >: RefFailed](f: => A):A = {
-    status match {
-      case pa:PermApproved => f
-      case pr:PermRefused => RefFailed(pr.reason, Some(PermissionWasRefused(this)))
-    }
+    status.perform(f)
   }
 
   def reason = status.reason
