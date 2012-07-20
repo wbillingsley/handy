@@ -23,7 +23,7 @@ import scala.collection.mutable
 case class PermissionWasRefused[T](resp:PermResponse) extends Exception
 
 abstract class Permission[T] {
-  def resolve(who: T):PermResponse
+  def resolve(tok: PermissionToken[T]):PermResponse
 }
 
 sealed abstract class PermResponse {
@@ -87,7 +87,7 @@ class PermissionToken[T](val who: T) {
    * @return
    */
   def check(perm:Permission[T]) = {
-    val pr = perm.resolve(who)
+    val pr = perm.resolve(this)
     pr match {
       case pa:PermApproved => approvals.put(perm, pa)
       case _ => { /* do nothing */ }
