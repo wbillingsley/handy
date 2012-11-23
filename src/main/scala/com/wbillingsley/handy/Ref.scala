@@ -63,80 +63,121 @@ trait RefResolver {
  * A generic reference to something.  Used so we can talk about something (usually a persisted object) without having
  * to fetch it first.
  */
-sealed abstract class Ref[+T] {
+trait Ref[+T] extends TraversableOnce[T] {
   def fetch: ResolvedRef[T]
 
-  def toOption:Option[T]
-
-  def flatMap[B](func: T => Ref[B]) = {
-    fetch match {
-      case RefItself(item) => func(item)
-      case r:RefNothing => r
-    }
-  }
+  def toOption:Option[T] 
   
-  def map[B](func: T => B) = {
-    fetch match {
-      case RefItself(item) => {
-        val x = func(item)
-        if (x == null) RefNone else RefItself(x)
-      }
-      case r:RefNothing => r
-    }
-  }
+  def flatMap[B](func: T => Ref[B]):Ref[B] 
+  
+  def map[B](func: T => B):Ref[B]
 
-  def foreach(func: T => Any) {
-    fetch match {
-      case RefItself(item) => {
-        func(item)
-      }
-      case r:RefNothing => r
-    }
-  }
+  def foreach[U](func: T => U):Unit 
 
-  def orIfNone[B >: T](f: => Ref[B]):Ref[B] = {
-    val fetched = fetch
-    if (fetched == RefNone) {
-      f
-    } else {
-      fetched
-    }
-  }
+  def orIfNone[B >: T](f: => Ref[B]):Ref[B]
 
   def getId:Option[Any]  
 }
 
+trait RefOne[+T] extends Ref[T]
+
+trait RefMany[+T] extends Ref[T]
+
 /**
  * A resolved reference to an (or no) item
  */
-sealed abstract class ResolvedRef[+T] extends Ref[T] {
+trait ResolvedRef[+T] extends Ref[T] {
   def fetch = this
 
   def isEmpty:Boolean
+  
 }
 
 /**
  * A reference that has not yet been looked up
  */
-abstract class UnresolvedRef[+T] extends Ref[T] {
+trait UnresolvedRef[+T] extends Ref[T] {
   def fetch = Ref.resolve(this)
+  
+  def map[B](f: T => B) = fetch.map(f)
+  
+  def foreach[U](f: T => U) { fetch.foreach(f) }
+  
+  def flatMap[B](f: T => Ref[B]) = fetch.flatMap(f)
+  
+  def orIfNone[B >: T](f: => Ref[B]):Ref[B] = fetch.orIfNone(f)
 }
 
 /**
  * A reference that has nothing at the end of it, either through being a failed reference or the empty reference
  */
-abstract class RefNothing extends ResolvedRef[Nothing] {
+trait RefNothing extends ResolvedRef[Nothing] with RefOne[Nothing] with RefMany[Nothing] {
   def isEmpty = true
   def toOption = None
   def getId = None
+  
+  def foreach[U](f: Nothing => U) { /* does nothing */ }
+  
+  def map[B](f: Nothing => B) = this  
+  
+  def flatMap[B](f: Nothing => Ref[B]) = this
+  
+  def orIfNone[B >: Nothing](f: => Ref[B]):Ref[B] = f
+    
+  def isTraversableAgain = true
+  
+  def toIterator = Iterator.empty
+  
+  def toStream = Stream.empty
+  
+  def copyToArray[B >: Nothing](xs:Array[B], start:Int, len:Int) { /* nothing to copy */ }
+  
+  def exists(p: Nothing => Boolean) = false
+  
+  def find(p: Nothing => Boolean) = None
+  
+  def forall(p: Nothing => Boolean) = Iterator.empty.forall(p)
+  
+  def hasDefiniteSize = true
+  
+  def seq = Iterator.empty.seq
+  
+  def toTraversable = Seq.empty  
+  
+  
 }
 
 /**
  * A reference to an item by its id.
  */
-case class RefById[T, K](clazz : scala.Predef.Class[T], id: K) extends UnresolvedRef[T] {
+case class RefById[T, K](clazz : scala.Predef.Class[T], id: K) extends UnresolvedRef[T] with RefOne[T] {
   def toOption = fetch.toOption
   def getId = Some(id)
+  
+  def isTraversableAgain = true
+  
+  def toIterator = fetch.toIterator
+  
+  def toStream = fetch.toStream
+  
+  def copyToArray[B >: T](xs:Array[B], start:Int, len:Int) { 
+    fetch.copyToArray(xs, start, len) 
+  }
+  
+  def exists(p: T => Boolean) = fetch.exists(p)
+  
+  def find(p: T => Boolean) = fetch.find(p)
+  
+  def forall(p: T => Boolean) = fetch.forall(p)
+  
+  def hasDefiniteSize = fetch.hasDefiniteSize
+  
+  def seq = fetch.seq
+  
+  def toTraversable = fetch.toTraversable   
+  
+  def isEmpty = fetch.isEmpty	
+  
 }
 
 /**
@@ -154,15 +195,54 @@ case object RefNone extends RefNothing
 /**
  * A reference to an item that has been fetched.
  */
-case class RefItself[T](item: T) extends ResolvedRef[T] {
+case class RefItself[T](item: T) extends ResolvedRef[T] with RefOne[T] {
   type hasId = { def id:Any }
   
   def toOption = Some(item)
+  
   def isEmpty = false
+  
+  def count = 1
+  
+  def map[B](f: T => B) = {
+    val x = f(item)
+    if (x == null) RefNone else RefItself(x)
+  } 
+
+  def flatMap[B](f: T => Ref[B]) = f(item)
+  
+  def foreach[U](f: T => U) { f(item) }
+  
+  def orIfNone[B >: T](f: => Ref[B]):Ref[B] = this  
   
   def getId = {
     if (item.isInstanceOf[hasId]) {
       Some(item.asInstanceOf[hasId].id)
     } else None
   }
+  
+  def isTraversableAgain = true
+  
+  def toIterator = Iterator(item)
+  
+  def toStream = Stream(item)
+  
+  def copyToArray[B >: T](xs:Array[B], start:Int, len:Int) { 
+    toIterator.copyToArray(xs, start, len) 
+  }
+  
+  def exists(p: T => Boolean) = p(item)
+  
+  def find(p: T => Boolean) = if (p(item)) Some(item) else None
+  
+  def forall(p: T => Boolean) = p(item)
+  
+  def hasDefiniteSize = true
+  
+  def seq = toOption
+  
+  def toTraversable = toOption  
+    
+  
 }
+
