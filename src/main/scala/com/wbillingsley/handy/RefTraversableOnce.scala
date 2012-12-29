@@ -1,11 +1,19 @@
 package com.wbillingsley.handy
 
+import scala.language.higherKinds
+
 /**
  * A reference to a collection of items.
  */
-case class RefTraversableOnce[T](items: TraversableOnce[T]) extends ResolvedRef[T] with RefMany[T] {
+case class RefTraversableOnce[T, C[T] <: TraversableOnce[T]](val items: C[T]) extends ResolvedRef[T] with RefMany[T] {
   
-  def toOption = items.toStream.headOption
+  override def getId[TT >: T, KK](implicit g:GetsId[TT, KK]) = Ref.fromOptionItem(headOption).getId(g)
+  
+  def first = Ref.fromOptionItem(headOption)
+  
+  def headOption = items.toStream.headOption
+  
+  def toOption = headOption
   
   def isEmpty = items.isEmpty
   
@@ -14,18 +22,12 @@ case class RefTraversableOnce[T](items: TraversableOnce[T]) extends ResolvedRef[
     RefTraversableOnce(result)
   } 
 
-  def flatMap[B](f: T => Ref[B]) = {
-    val results = for (item <- items; result <- f(item)) yield {
-      result
-    }
-    if (results.isEmpty) { RefNone } else { RefTraversableOnce(results) }
+  def flatMap[B, R[B] >: RefNothing <: Ref[B]](f: T => R[B]) = {        
+    val results = for (item <- items) yield f(item)
+    if (results.isEmpty) { RefNone } else { RefTraversableRef(results) }
   }
   
   def foreach[U](f: T => U) { items.foreach(f) }
-  
-  def orIfNone[B >: T](f: => Ref[B]):Ref[B] = this  
-  
-  def getId = None
   
   def isTraversableAgain = items.isTraversableAgain
   
@@ -48,3 +50,32 @@ case class RefTraversableOnce[T](items: TraversableOnce[T]) extends ResolvedRef[
   def toTraversable = items.toTraversable
   
 }
+
+case class RefTraversableRef[T, C[T] <: TraversableOnce[T]](val refs: TraversableOnce[Ref[T]]) extends Ref[T] with RefMany[T] {
+
+  override def getId[TT >: T, KK](implicit g:GetsId[TT, KK]) = Ref.fromOptionItem(headOption).getId(g)
+  
+  def fetch = RefTraversableOnce(refs.flatMap(_.fetch))
+  
+  def first = Ref.fromOptionItem(headOption)
+  
+  def headOption = refs.flatMap(_.fetch).toStream.headOption
+  
+  def toOption = headOption
+  
+  def isEmpty = refs.forall(_.isEmpty)
+  
+  def map[B](f: T => B) = {
+    val result = refs.map(_.map(f))
+    RefTraversableRef(result)
+  } 
+
+  def flatMap[B, R[B] >: RefNothing <: Ref[B]](f: T => R[B]) = {
+    val result = refs.map(_.flatMap(f))
+    RefTraversableRef(result)
+  }
+  
+  def foreach[U](f: T => U) { refs.foreach(_.foreach(f)) }
+  
+}
+

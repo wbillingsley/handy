@@ -58,7 +58,7 @@ case class PermRefused(reason: String) extends PermResponse {
   def may = false
 
   def perform[A >: RefFailed](f: => A):A = {
-    RefFailed(reason, Some(PermissionWasRefused(this)))
+    RefFailed(PermissionWasRefused(this))
   }
 }
 
