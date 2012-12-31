@@ -18,6 +18,7 @@ Copyright (C) 2012 William Billingsley
 */
 package com.wbillingsley.handy
 
+import scala.concurrent.Future
 import scala.language.higherKinds
 
 
@@ -50,7 +51,7 @@ object Ref {
   }
     
   /**
-   * Addss a toRef method to convert this collection into a Ref.  Note that we do not just
+   * Adds a toRef method to convert this collection into a Ref.  Note that we do not just
    * implicitly convert from TraversableOnce to Ref because it would cause there to be a 
    * compiler error with an ambiguous conversion for some collections with flatMap
    * (as both a conversion to Ref and a conversion to MonadOps could provide flatMap)
@@ -58,6 +59,11 @@ object Ref {
   implicit class travToRef[T, C[T] <: TraversableOnce[T]](val underlying: C[T]) extends AnyVal {
 	def toRef = RefTraversableOnce(underlying)  
   }  
+  
+  implicit class futToRef[T](val underlying: Future[T]) extends AnyVal {
+	def toRef = new RefFuture(underlying)  
+  }  
+  
   
   def itself[T](item: T) = RefItself(item)
     

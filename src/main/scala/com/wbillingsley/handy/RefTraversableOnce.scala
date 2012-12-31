@@ -1,6 +1,6 @@
 package com.wbillingsley.handy
 
-import scala.language.higherKinds
+import scala.language.{higherKinds, postfixOps}
 
 /**
  * A reference to a collection of items.

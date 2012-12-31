@@ -29,7 +29,7 @@ class RefFuture[+T](val future: Future[T]) extends Ref[T] with RefOne[T] {
      new RefFutureRef(fut)
   }
     
-  def flatMap[B, R[B] >: RefNothing <: Ref[B]](f: T => R[B]):Ref[B] = {	
+  def flatMap[B, R[B] >: RefNothing <: Ref[B]](f: T => R[B]) = {	
     val result:Future[R[B]] = future.map(f)
     new RefFutureRef(result)    
   }
@@ -65,7 +65,7 @@ class RefFuture[+T](val future: Future[T]) extends Ref[T] with RefOne[T] {
 }
 
 
-class RefFutureRef[+T](futureRef: Future[Ref[T]]) extends Ref[T] {
+class RefFutureRef[+T](val futureRef: Future[Ref[T]]) extends Ref[T] {
   
   def getId[TT >: T, KK](implicit g:GetsId[TT, KK]) = fetch.getId(g)
   
