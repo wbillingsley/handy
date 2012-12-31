@@ -1,16 +1,23 @@
 package com.wbillingsley.handy
 
 import scala.collection.mutable
+import scala.language.implicitConversions
 
 /**
  * A mutable set of permissions.  It's mutable so that in the case where
  * we ask for, but do not require, a permission we can cache the 
  * permission even if the prgrammer didn't assign the return typee
  */
-case class Approval[T](val who: T, val permissions: mutable.Set[Perm[T]] = mutable.Set.empty[Perm[T]]) 
+case class Approval[T](val who: Ref[T], val permissions: mutable.Set[Perm[T]] = mutable.Set.empty[Perm[T]]) {
+  
+}
 
 case class Refused(msg: String) extends Throwable(msg) {  
-  implicit def toRef = RefFailed(this)
+  def toRef = RefFailed(this)
+}
+
+object Refused {
+  implicit def toRef(r:Refused) = RefFailed(r)
 }
 
 /** 
@@ -19,8 +26,12 @@ case class Refused(msg: String) extends Throwable(msg) {
  * Approved. 
  */
 case class Approved(msg: String = "Approved") {
+  def toRef = RefItself(this)
+}
+
+object Approved {
+  implicit def toRef(a:Approved) = RefItself(a)
   
-  implicit def toRef = RefItself(this)
   
 }
 
@@ -48,7 +59,7 @@ object Approval {
   
   import scala.language.implicitConversions
   
-  implicit class WrappedRefApproved(ra: Ref[Approved]) {
+  implicit class WrappedRefApproved(val ra: Ref[Approved]) extends AnyVal {
     
     def perform[B](f: => Ref[B]):Ref[B] = {
       ra flatMap { a => f }
@@ -56,7 +67,7 @@ object Approval {
     
   }
   
-  implicit class WrappedRefApproval[T](ra: Ref[Approval[T]]) {
+  implicit class WrappedRefApproval[T](val ra: Ref[Approval[T]]) extends AnyVal {
     
     def ask(permission: Perm[T]):Ref[Approved] = {
       
@@ -74,8 +85,9 @@ object Approval {
     
   }
   
+  
   implicit def refApproval[T](a: Approval[T]) = RefItself(a)
   
-  implicit def wrapApproval[T](a: Approval[T]) = new WrappedRefApproval(RefItself(a))
+  implicit def wrapApproval[T](a: Approval[T]) = WrappedRefApproval(RefItself(a))
   
 }

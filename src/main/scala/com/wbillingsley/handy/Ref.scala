@@ -28,6 +28,13 @@ object Ref {
 
   import scala.language.implicitConversions
 
+  /**
+   * Allows us to say "foo itself" and get a RefItself(foo)
+   */
+  implicit class Itself[T](val it:T) extends AnyVal { 
+    def itself = RefItself(it) 
+  }
+  
   def fromOptionId[T, K](clazz : scala.Predef.Class[T], opt: Option[K]):Ref[T] = {
     opt match {
       case Some(id) => RefById(clazz, id)
@@ -41,8 +48,19 @@ object Ref {
       case None => RefNone
     }
   }
+    
+  /**
+   * Addss a toRef method to convert this collection into a Ref.  Note that we do not just
+   * implicitly convert from TraversableOnce to Ref because it would cause there to be a 
+   * compiler error with an ambiguous conversion for some collections with flatMap
+   * (as both a conversion to Ref and a conversion to MonadOps could provide flatMap)
+   */
+  implicit class travToRef[T, C[T] <: TraversableOnce[T]](val underlying: C[T]) extends AnyVal {
+	def toRef = RefTraversableOnce(underlying)  
+  }  
   
   def itself[T](item: T) = RefItself(item)
+    
   
   def apply[T, K](clazz : scala.Predef.Class[T], opt: Option[K]) = fromOptionId(clazz, opt)
 
@@ -183,7 +201,7 @@ case object RefNone extends RefNothing {
 /**
  * A reference to an item that has been fetched.
  */
-case class RefItself[T](item: T) extends ResolvedRef[T] with RefOne[T] {
+case class RefItself[T](val item: T) extends ResolvedRef[T] with RefOne[T] {
   
   def toOption = Some(item)
   

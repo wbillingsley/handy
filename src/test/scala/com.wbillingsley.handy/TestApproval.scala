@@ -3,13 +3,20 @@ package com.wbillingsley.handy
 import org.junit.{BeforeClass, Test}
 import org.junit.Assert._
 import scala.collection.mutable
+import Ref._
 
 
 case class User(name:String)
 
-object TestApproval {
+case class CanDoOdd(i: Int) extends Perm[User] {
   
-  
+  def resolve(prior: Approval[User]) = {
+    if (i % 2 ==1) {
+      Approved("Yes, it was odd")
+    } else {
+      Refused("No, it was even")
+    }
+  }
   
 }
 
@@ -18,26 +25,12 @@ class TestApproval {
   val fred = User("fred")
   
   @Test
-  def default = {
-    
-    val a:Approval[Ref[User]] = Approval(RefItself(fred))
-    
-    val ra:Ref[Approval[Ref[User]]] = a
-    
-    
+  def basic {
+    val a = Approval(fred.itself)    
+    assertEquals(RefItself(Approved("Yes, it was odd")), a ask CanDoOdd(1))
     
   }
 
-  @Test
-  def performUnresolvedRef() = {
-    val r = RefById(classOf[String], "id")
-    val fred = "Fred"
-    val pt = new PermissionToken(fred)
-
-    val result = pt.perform({ r })
-    assertTrue("Wrong type", result.isInstanceOf[Ref[String]])
-    assertTrue("Wrong type", !result.isInstanceOf[ResolvedRef[String]])
-  }
   
   
 }
