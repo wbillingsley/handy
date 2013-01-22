@@ -21,6 +21,18 @@ package com.wbillingsley.handy
 import scala.concurrent.Future
 import scala.language.higherKinds
 
+/**
+ * RefCanFlatMapTo. The flatMap method is designed to take an implicit
+ * RCFMT. This allows us to determine the return type of flatMap (and
+ * thus for loops) depending on the parameter type. See the implicit
+ * objets in the Ref ccompanion object.
+ */
+trait RCFMT[-From[_], -To[_], +Result[_]] {  
+  def flatMap[A, B](from: From[A], f: A => To[B]):Result[B]  
+}
+
+
+trait RSuper[+T]
 
 /**
  * Companion object
@@ -36,7 +48,7 @@ object Ref {
     def itself = RefItself(it) 
   }
   
-  def fromOptionId[T, K](clazz : scala.Predef.Class[T], opt: Option[K]):Ref[T] = {
+  def fromOptionId[T, K](clazz : scala.Predef.Class[T], opt: Option[K]) = {
     opt match {
       case Some(id) => RefById(clazz, id)
       case None => RefNone
@@ -49,15 +61,33 @@ object Ref {
       case None => RefNone
     }
   }
+  
+  /** 
+   * FlatMap from one to one returns a singular Ref.
+   */
+  implicit object OneToOne extends RCFMT[Ref, Ref, Ref] {    
+    def flatMap[A, B](from: Ref[A], f: A => Ref[B]) = {
+      from.flatMapOne(f)
+    }    
+  }
+  
+  /** 
+   * FlatMap from one to many returns a RefMany.
+   */
+  implicit object OneToMany extends RCFMT[Ref, RefMany, RefMany] {    
+    def flatMap[A, B](from: Ref[A], f: A => RefMany[B]) = {
+      from.flatMapMany(f)
+    }    
+  }
     
   /**
-   * Adds a toRef method to convert this collection into a Ref.  Note that we do not just
+   * Adds a toRef method to convert this collection into a RefMany.  Note that we do not just
    * implicitly convert from TraversableOnce to Ref because it would cause there to be a 
    * compiler error with an ambiguous conversion for some collections with flatMap
    * (as both a conversion to Ref and a conversion to MonadOps could provide flatMap)
    */
   implicit class travToRef[T, C[T] <: TraversableOnce[T]](val underlying: C[T]) extends AnyVal {
-	def toRef = RefTraversableOnce(underlying)  
+	def toRefMany = new RefTraversableOnce(underlying)  
   }  
   
   implicit class futToRef[T](val underlying: Future[T]) extends AnyVal {
@@ -70,61 +100,99 @@ object Ref {
   
   def apply[T, K](clazz : scala.Predef.Class[T], opt: Option[K]) = fromOptionId(clazz, opt)
 
-  def apply[T](opt: Option[T]) = fromOptionItem(opt)
+  implicit def apply[T](opt: Option[T]) = fromOptionItem(opt)
 }
 
 
 /**
- * A generic reference to something.  Used so we can talk about something (usually a persisted object) without having
- * to fetch it first.
+ * A reference to one item. This might be the item itself, a reference by ID, a Future from a fetch
+ * operation, no item, a failure, etc.
+ * 
+ * There is a similar trait, RefMany, for dealing with references to multiple items.
  */
-trait Ref[+T] {
+trait Ref[+T] extends RSuper[T] {
   
   def fetch: ResolvedRef[T]
 
   def toOption:Option[T] 
   
   def toEither:Either[Throwable, Option[T]] = fetch.toEither
-    
+  
   /**
    * Note that the way this is defined, you can flatMap from a RefOne to a RefMany.
-   * 
-   * We use the higher kinded type so that subclasses can narrow the return type to R[B] if
-   * they choose.  For instance, RefItself can (as it can just return the function result),
-   * but a RefFuture could not (as if it's called with a function returning a ResolvedRef, the 
-   * result must nonetheless be a RefFuture).  Neither can RefTraversableOnce.
    */
-  def flatMap[B, R[B] >: RefNothing <: Ref[B]](func: T => R[B]):Ref[B] 
+  def flatMap[B, R[B], Result[B]](func: T => R[B])(implicit imp: RCFMT[Ref, R, Result]):Result[B] = imp.flatMap(this, func)
+  
+  def flatMapOne[B](func: T => Ref[B]):Ref[B] 
+
+  def flatMapMany[B](func: T => RefMany[B]):RefMany[B] 
+
+  def withFilter(func: T => Boolean):Ref[T]
+  
+  def orIfNone[B >: T](f: => Ref[B]):Ref[B] = {
+    if (isEmpty) f else this
+  }       
   
   def map[B](func: T => B):Ref[B]
 
   def foreach[U](func: T => U):Unit 
+  
+  def onComplete[U](onSuccess: T => U, onNone: => U, onFail: Throwable => U):Unit  
 
   def isEmpty: Boolean
-  
-  def orIfNone[B >: T](f: => Ref[B]) = {
-    if (isEmpty) f else this
-  }
   
   def getId[TT >: T, K](implicit g:GetsId[TT, K]):Option[K] 
   
   def sameId[TT >: T](other: Ref[TT])(implicit g:GetsId[TT, _]) = getId(g) == other.getId(g)
 }
 
-/**
- * A reference that is expected to contain only a single item
- */
-trait RefOne[+T] extends Ref[T] {
-  def map[B](func: T => B):RefOne[B]
 
-  override def fetch: ResolvedRef[T] with RefOne[T]	  
-}
+
+
 
 /**
  * A reference that is expected to contain several items
  */
-trait RefMany[+T] extends Ref[T] {
-  override def map[B](func: T => B):RefMany[B]  
+trait RefMany[+T] extends RSuper[T] {
+  
+  def fetch:ResolvedRefMany[T]
+  
+  def map[B](func: T => B):RefMany[B]  
+  
+  def foreach[U](func: T => U):Unit 
+
+  def isEmpty: Boolean
+
+  def flatMap[B, R[B], Result[B]](func: T => R[B])(implicit imp: RCFMT[RefMany, R, Result]):Result[B] = imp.flatMap(this, func)
+
+  def flatMapOne[B](func: T => Ref[B]):RefMany[B] 
+
+  def flatMapMany[B](func: T => RefMany[B]):RefMany[B] 
+  
+  def withFilter(func: T => Boolean):RefMany[T]  
+
+}
+
+object RefMany {
+  
+  /** 
+   * FlatMap from many to many returns a RefMany.
+   */
+  implicit object ManyToMany extends RCFMT[RefMany, RefMany, RefMany] {    
+    def flatMap[A, B](from: RefMany[A], f: A => RefMany[B]) = {
+      from.flatMapMany(f)
+    }    
+  }  
+  
+  
+  /** 
+   * FlatMap from many to one returns a RefMany.
+   */
+  implicit object ManyToOne extends RCFMT[RefMany, Ref, RefMany] {    
+    def flatMap[A, B](from: RefMany[A], f: A => Ref[B]) = {
+      from.flatMapOne(f)
+    }    
+  }  
 }
 
 /**
@@ -135,6 +203,14 @@ trait ResolvedRef[+T] extends Ref[T] with TraversableOnce[T] {
 }
 
 /**
+ * A resolved reference to a number of items
+ */
+trait ResolvedRefMany[+T] extends RefMany[T] with TraversableOnce[T] {
+  def fetch = this  
+}
+
+
+/**
  * A reference that has not yet been looked up
  */
 trait UnresolvedRef[+T] extends Ref[T] 
@@ -143,7 +219,7 @@ trait UnresolvedRef[+T] extends Ref[T]
 /**
  * A reference that has nothing at the end of it, either through being a failed reference or the empty reference
  */
-trait RefNothing extends ResolvedRef[Nothing] with RefOne[Nothing] with RefMany[Nothing] {
+trait RefNothing extends ResolvedRef[Nothing] with ResolvedRefMany[Nothing] {
   
   override def getId[TT >: Nothing, K](implicit g:GetsId[TT, K]) = None
   
@@ -157,8 +233,10 @@ trait RefNothing extends ResolvedRef[Nothing] with RefOne[Nothing] with RefMany[
   
   def map[B](f: Nothing => B) = this  
   
-  def flatMap[B, R[B] >: RefNothing](f: Nothing => R[B]) = this
-      
+  def flatMapOne[B](f: Nothing => Ref[B]) = this
+
+  def flatMapMany[B](f: Nothing => RefMany[B]) = this
+  
   def isTraversableAgain = true
   
   def toIterator = Iterator.empty
@@ -178,7 +256,8 @@ trait RefNothing extends ResolvedRef[Nothing] with RefOne[Nothing] with RefMany[
   def seq = Iterator.empty.seq
   
   def toTraversable = Seq.empty  
-  
+     
+  def withFilter(p: Nothing => Boolean) = this  
   
 }
 
@@ -192,7 +271,10 @@ trait RefNothing extends ResolvedRef[Nothing] with RefOne[Nothing] with RefMany[
 case class RefFailed(exception: Throwable) extends RefNothing {
 
   override def toEither = Left(exception)
-    
+       
+  def onComplete[U](onSuccess: Nothing => U, onNone: => U, onFail: Throwable => U) { 
+    onFail(exception)
+  } 
 }
 
 /**
@@ -200,14 +282,18 @@ case class RefFailed(exception: Throwable) extends RefNothing {
  */
 case object RefNone extends RefNothing {
   
-  override def toEither = Right(None)
+  override def toEither = Right(None)  
   
+  def onComplete[U](onSuccess: Nothing => U, onNone: => U, onFail: Throwable => U) { 
+    onNone
+  }
+   
 }
 
 /**
  * A reference to an item that has been fetched.
  */
-case class RefItself[T](val item: T) extends ResolvedRef[T] with RefOne[T] {
+case class RefItself[T](val item: T) extends ResolvedRef[T] {
   
   def toOption = Some(item)
   
@@ -222,8 +308,10 @@ case class RefItself[T](val item: T) extends ResolvedRef[T] with RefOne[T] {
     if (x == null) RefNone else RefItself(x)
   } 
   
-  def flatMap[B, R[B] >: RefNothing <: Ref[B]](f: T => R[B]):R[B] = f(item)
-  
+  def flatMapOne[B](f: T => Ref[B]):Ref[B] = f(item)
+
+  def flatMapMany[B](f: T => RefMany[B]):RefMany[B] = f(item)
+
   def foreach[U](f: T => U) { f(item) }
   
   override def getId[TT >: T, K](implicit g:GetsId[TT, K]) = g.getId(item)
@@ -252,6 +340,11 @@ case class RefItself[T](val item: T) extends ResolvedRef[T] with RefOne[T] {
   
   override def fetch = this
     
+  def withFilter(p: T => Boolean) = if (p(item)) this else RefNone
+ 
+  def onComplete[U](onSuccess: T => U, onNone: => U, onFail: Throwable => U) { 
+    onSuccess(item)
+  }  
   
 }
 

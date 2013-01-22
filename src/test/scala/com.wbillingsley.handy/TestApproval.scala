@@ -5,8 +5,12 @@ import org.junit.Assert._
 import scala.collection.mutable
 import Ref._
 
+object TestApproval {
+  case class User(name:String)	
+}
 
-case class User(name:String)
+import TestApproval._
+
 
 case class CanDoOdd(i: Int) extends Perm[User] {
   
@@ -27,10 +31,7 @@ class TestApproval {
   @Test
   def basic {
     val a = Approval(fred.itself)    
-    assertEquals(RefItself(Approved("Yes, it was odd")), a ask CanDoOdd(1))
-    
+    assertEquals(RefItself(Approved("Yes, it was odd")), a ask CanDoOdd(1))    
   }
-
-  
   
 }

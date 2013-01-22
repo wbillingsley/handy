@@ -44,7 +44,7 @@ abstract class Perm[T] {
  * This overrides the equals operator to consider references equal if they have the same class and the
  * same id.  So, CanEdit(RefItself(Page1)) == CanEdit(RefById(classof[Page], 1))
  */
-abstract class PermOnIdRef[T, K](what: Ref[T])(implicit g:GetsId[T, K]) extends Perm[T] {
+abstract class PermOnIdRef[U, +T, K](what: Ref[T])(implicit g:GetsId[T, K]) extends Perm[U] {
   
   override def equals(other:Any) = {
     (this.getClass == other.getClass) && {
@@ -58,14 +58,6 @@ abstract class PermOnIdRef[T, K](what: Ref[T])(implicit g:GetsId[T, K]) extends 
 object Approval {
   
   import scala.language.implicitConversions
-  
-  implicit class WrappedRefApproved(val ra: Ref[Approved]) extends AnyVal {
-    
-    def perform[B](f: => Ref[B]):Ref[B] = {
-      ra flatMap { a => f }
-    }
-    
-  }
   
   implicit class WrappedRefApproval[T](val ra: Ref[Approval[T]]) extends AnyVal {
     
@@ -86,8 +78,8 @@ object Approval {
   }
   
   
-  implicit def refApproval[T](a: Approval[T]) = RefItself(a)
+  implicit def refApproval[T](a: Approval[T]):RefItself[Approval[T]] = RefItself(a)
   
-  implicit def wrapApproval[T](a: Approval[T]) = WrappedRefApproval(RefItself(a))
+  implicit def wrapApproval[T](a: Approval[T]):WrappedRefApproval[T] = WrappedRefApproval(RefItself(a))
   
 }

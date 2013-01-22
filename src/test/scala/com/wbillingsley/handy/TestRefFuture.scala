@@ -11,6 +11,7 @@ import scala.concurrent._
 import ExecutionContext.Implicits.global
 import Future._
 import Ref._
+import RefMany._
 
 class TestRefFuture {
 
@@ -30,7 +31,10 @@ class TestRefFuture {
   @Test
   def flatMapTrav {
     val futRef = future { 3 }.toRef
-    val after = futRef flatMap { i => List(1, 2, 3) toRef }
+    
+    val after = futRef flatMap { i =>       
+      List(1, 2, 3) toRefMany
+    }
     assertEquals(List(1, 2, 3), after.fetch.toList)        
   }
 }

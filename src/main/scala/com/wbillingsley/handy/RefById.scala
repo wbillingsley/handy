@@ -8,7 +8,7 @@ import scala.language.higherKinds
  * clazz is kept because it will be needed at run-time by the lookUp method (to know which class to look 
  * up in the database)
  */
-case class RefById[T, K](clazz : scala.Predef.Class[T], id: K) extends UnresolvedRef[T] with RefOne[T] {
+case class RefById[T, K](clazz : scala.Predef.Class[T], id: K) extends Ref[T] with UnresolvedRef[T] {
     
   override def getId[TT >: T, KK](implicit g:GetsId[TT, KK]) = {
 	g.canonical(id)
@@ -19,10 +19,16 @@ case class RefById[T, K](clazz : scala.Predef.Class[T], id: K) extends Unresolve
   def fetch = lookUp.fetch
   
   def foreach[U](f: (T) => U) {
-    fetch.foreach(f)
+    lookUp.foreach(f)
   }
   
-  def flatMap[B, R[B] >: RefNothing <: Ref[B]](f: T => R[B]) = fetch.flatMap(f)
+  def onComplete[U](onSuccess: T => U, onNone: => U, onFail: Throwable => U) { 
+    lookUp.onComplete(onSuccess, onNone, onFail) 
+  }
+  
+  def flatMapOne[B](f: T => Ref[B]) = lookUp.flatMap(f)
+
+  def flatMapMany[B](f: T => RefMany[B]) = lookUp.flatMap(f)  
   
   def map[B](f: (T) => B) = fetch.map(f)
   
@@ -54,13 +60,14 @@ case class RefById[T, K](clazz : scala.Predef.Class[T], id: K) extends Unresolve
   
   def isEmpty = fetch.isEmpty	
   
+  def withFilter(p: T => Boolean) = lookUp.withFilter(p)
 }
 
 
 object RefById {
 
 	trait LookUp {
-	  def lookup[T](r:RefById[T,_]): RefOne[T]
+	  def lookup[T](r:RefById[T,_]): Ref[T]
 	}
   
 	/**

@@ -6,7 +6,7 @@ trait HasId[K] {
 
 }
 
-trait GetsId[T, K] {
+trait GetsId[-T, K] {
   
   def getId(obj: T): Option[K]
   
