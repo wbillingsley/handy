@@ -31,13 +31,18 @@ trait RCFMT[-From[_], -To[_], +Result[_]] {
   def flatMap[A, B](from: From[A], f: A => To[B]):Result[B]  
 }
 
+trait RMCFMT[-From[_], -To[_], +Result[_]] {  
+  def flatMap[A, B](from: From[A], f: A => To[B]):Result[B]  
+}
 
-trait RSuper[+T]
+trait RSuper[+T] {
+  type Repr[T] <: RSuper[T]
+}
 
 /**
  * Companion object
  */
-object Ref {
+object Ref { 
 
   import scala.language.implicitConversions
 
@@ -110,7 +115,7 @@ object Ref {
  * 
  * There is a similar trait, RefMany, for dealing with references to multiple items.
  */
-trait Ref[+T] extends RSuper[T] {
+trait Ref[+T] extends RSuper[T] { 
   
   def fetch: ResolvedRef[T]
 
@@ -163,7 +168,7 @@ trait RefMany[+T] extends RSuper[T] {
 
   def isEmpty: Boolean
 
-  def flatMap[B, R[B], Result[B]](func: T => R[B])(implicit imp: RCFMT[RefMany, R, Result]):Result[B] = imp.flatMap(this, func)
+  def flatMap[B, R[B], Result[B]](func: T => R[B])(implicit imp: RMCFMT[RefMany, R, Result]):Result[B] = imp.flatMap(this, func)
 
   def flatMapOne[B](func: T => Ref[B]):RefMany[B] 
 
@@ -178,7 +183,7 @@ object RefMany {
   /** 
    * FlatMap from many to many returns a RefMany.
    */
-  implicit object ManyToMany extends RCFMT[RefMany, RefMany, RefMany] {    
+  implicit object ManyToMany extends RMCFMT[RefMany, RefMany, RefMany] {    
     def flatMap[A, B](from: RefMany[A], f: A => RefMany[B]) = {
       from.flatMapMany(f)
     }    
@@ -188,7 +193,7 @@ object RefMany {
   /** 
    * FlatMap from many to one returns a RefMany.
    */
-  implicit object ManyToOne extends RCFMT[RefMany, Ref, RefMany] {    
+  implicit object ManyToOne extends RMCFMT[RefMany, Ref, RefMany] {    
     def flatMap[A, B](from: RefMany[A], f: A => Ref[B]) = {
       from.flatMapOne(f)
     }    
