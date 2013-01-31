@@ -2,7 +2,7 @@ name := "handy"
 
 organization := "com.wbillingsley"
 
-version := "0.3-SNAPSHOT"
+version := "0.4-SNAPSHOT"
 
 scalaVersion := "2.10.0"
 
@@ -21,4 +21,6 @@ publishTo <<= version { (v: String) =>
   else
     Some(Resolver.file("releases", new File(localm + "releases")))
 }
+
+parallelExecution in Test := false
 
