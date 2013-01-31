@@ -3,7 +3,7 @@
  */
 package com.wbillingsley.handy
 
-import org.junit.{BeforeClass, Test}
+import org.junit.{Before, Test}
 import org.junit.Assert._
 import scala.collection.mutable
 
@@ -20,9 +20,7 @@ object TestRef {
 
   val objMap = mutable.Map.empty[Long, TItem]
   
-  @BeforeClass def prep {
-    
-    RefById.lookUpMethod = new RefById.LookUp {
+  val lum = new RefById.LookUp {
       def lookup[T](unresolved: RefById[T, _]) = {
         unresolved match {
           case RefById(clazz, id) if clazz == classOf[TItem] => {
@@ -34,7 +32,6 @@ object TestRef {
           case _ => RefNone
         }        
       }
-    }
 
   }
 }
@@ -43,6 +40,10 @@ object TestRef {
 class TestRef {
 
   import TestRef._
+  
+  @Before def before {
+    RefById.lookUpMethod = lum
+  }
 
   @Test def putAndGet {
     val item = TItem(1, "one")
