@@ -48,6 +48,13 @@ case class RefTraversableOnce[T, C[T] <: TraversableOnce[T]](val items: C[T]) ex
   
   def withFilter(p: T => Boolean) = new RefTraversableOnce(items withFilter p)
   
+  def fold[B](initial: =>B)(each:(B, T) => B) = RefItself(items.foldLeft(initial)(each))
+  
+  override def onReady[U](onSuccess: RefMany[T] => U, onNone: => U, onFail: Throwable => U) {
+    if(!items.isEmpty) onSuccess(this) else onNone
+  }
+  
+  
 }
 
 case class RefTraversableRef[T, C[T] <: TraversableOnce[T]](val refs: TraversableOnce[Ref[T]]) extends RefMany[T] {
@@ -81,6 +88,24 @@ case class RefTraversableRef[T, C[T] <: TraversableOnce[T]](val refs: Traversabl
   
   def withFilter(p: T => Boolean) = new RefTraversableRef(refs map (_ withFilter p))  
   
+  def fold[B](initial: =>B)(each:(B, T) => B) = {
+    import Ref._
+    
+    refs.foldLeft[Ref[B]](RefItself(initial)){(ar, br) =>
+      for (a <- ar; ob <- optionally(br)) yield { 
+	      ob match {
+	        case Some(b) => each(a,b)
+	        case None => a
+	      }
+      }
+    }     
+  }
+  
+  override def onReady[U](onSuccess: RefMany[T] => U, onNone: => U, onFail: Throwable => U) {
+    if(!refs.isEmpty) onSuccess(this) else onNone
+  }
+  
+  
 }
 
 case class RefTraversableRefMany[T, C[T] <: TraversableOnce[T]](val refs: TraversableOnce[RefMany[T]]) extends RefMany[T] {
@@ -112,6 +137,17 @@ case class RefTraversableRefMany[T, C[T] <: TraversableOnce[T]](val refs: Traver
 
   def foreach[U](f: T => U) { refs.foreach(_.foreach(f)) }
   
-  def withFilter(p: T => Boolean) = new RefTraversableRefMany(refs map (_ withFilter p))  
+  def withFilter(p: T => Boolean) = new RefTraversableRefMany(refs map (_ withFilter p)) 
+  
+  def fold[B](initial: =>B)(each:(B, T) => B) = {
+    refs.foldLeft[Ref[B]](RefItself(initial)){(ar, refMany) =>
+      ar.flatMap(a => refMany.fold(a)(each))
+    }     
+  }  
+  
+  override def onReady[U](onSuccess: RefMany[T] => U, onNone: => U, onFail: Throwable => U) {
+    if(!refs.isEmpty) onSuccess(this) else onNone
+  }
+  
   
 }

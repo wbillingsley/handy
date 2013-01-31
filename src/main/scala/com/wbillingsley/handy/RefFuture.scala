@@ -161,4 +161,16 @@ class RefFutureRefMany[+T](val futureRef: Future[RefMany[T]]) extends RefMany[T]
 
   def withFilter(p: T => Boolean) = new RefFutureRefMany(futureRef.map(_.withFilter(p)))
 
+  def fold[B](initial: =>B)(each:(B, T) => B) = new RefFutureRef(futureRef.map(_.fold(initial)(each)))
+  
+  override def onReady[U](onSuccess: RefMany[T] => U, onNone: => U, onFail: Throwable => U) {
+    futureRef onSuccess { case r:RefMany[T] => r onReady(onSuccess, onNone, onFail) }
+    futureRef onFailure {
+      case n:NoSuchElementException => onNone
+      case _ => onFail(_) 
+    }
+  
+  }
+
+  
 }

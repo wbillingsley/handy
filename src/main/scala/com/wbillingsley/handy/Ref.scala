@@ -99,13 +99,41 @@ object Ref {
 	def toRef = new RefFuture(underlying)  
   }  
   
+  /**
+   * flattens a RefMany[A[B]] by flatMaping itself to its contents
+   */
+  implicit class flattenableMany[B, A[B]](val underlying: RefMany[A[B]]) extends AnyVal {
+    def flatten[Result[B]](implicit imp: RMCFMT[RefMany, A, Result]) = imp.flatMap(underlying, {a:A[B] => a})  
+  }
+
+  /**
+   * flattens a Ref[A[B]] by flatMaping itself to its contents
+   */
+  implicit class flattenable[B, A[B]](val underlying: Ref[A[B]]) extends AnyVal {
+    def flatten[Result[B]](implicit imp: RCFMT[Ref, A, Result]) = imp.flatMap(underlying, {a:A[B] => a})  
+  }
+  
+  implicit def throwableToRef(exc: Throwable) = RefFailed(exc) 
   
   def itself[T](item: T) = RefItself(item)
     
   
   def apply[T, K](clazz : scala.Predef.Class[T], opt: Option[K]) = fromOptionId(clazz, opt)
 
-  implicit def apply[T](opt: Option[T]) = fromOptionItem(opt)
+  def apply[T](opt: Option[T]) = fromOptionItem(opt)
+  
+  /**
+   * Sometimes we actually do want Ref[Option[T]]
+   * 
+   * The reason is that in a for comprehension
+   *   for (a <- Ref[T], b <- funcThatTakesAnOption(...)) yield ...  
+   * we can't get None to pass into the function for b. So instead we do this:
+   *   for (optA <- optionally(Ref[T]), b <- funcThatTakesAnOption(optA)) yield ...  
+   * 
+   * This happens, for instance, when dealing with anonymous readers -- once the
+   * reader has been resolved it might still be None 
+   */
+  def optionally[T](r:Ref[T]) = r.map(Some(_)) orIfNone None.itself    
 }
 
 
@@ -119,6 +147,9 @@ trait Ref[+T] extends RSuper[T] {
   
   def fetch: ResolvedRef[T]
 
+  /**
+   * Converts this Ref to an Option[T]. Note that this might cause blocking if the Ref was asynchronous.
+   */
   def toOption:Option[T] 
   
   def toEither:Either[Throwable, Option[T]] = fetch.toEither
@@ -149,6 +180,21 @@ trait Ref[+T] extends RSuper[T] {
   def getId[TT >: T, K](implicit g:GetsId[TT, K]):Option[K] 
   
   def sameId[TT >: T](other: Ref[TT])(implicit g:GetsId[TT, _]) = getId(g) == other.getId(g)
+  
+  /**
+   * Converts this Ref to a Future[Option[T]] that might or might not immediately complete.
+   */
+  def toFuture:Future[Option[T]] = {
+    import scala.concurrent._
+    
+    val p = promise[Option[T]]
+      this onComplete(
+        onSuccess = p success Some(_),        
+        onNone = p success None,
+        onFail = p failure _
+      )
+      p.future
+  }
 }
 
 
@@ -175,7 +221,20 @@ trait RefMany[+T] extends RSuper[T] {
   def flatMapMany[B](func: T => RefMany[B]):RefMany[B] 
   
   def withFilter(func: T => Boolean):RefMany[T]  
+  
+  /**
+   * A fold across this (possibly asynchronous) collection
+   * initial will only be evaluated in the success case.
+   */
+  def fold[B](initial: =>B)(each:(B, T) => B):Ref[B]
 
+  /**
+   * Whereas with a RefOne, onComplete means any Future has completed, RefMany.onReady might only mean that the first found
+   * entry is available (or that there is an Enumerator ready to stream results from the database).
+   */
+  def onReady[U](onSuccess: RefMany[T] => U, onNone: => U, onFail: Throwable => U):Unit  
+  
+  
 }
 
 object RefMany {
@@ -280,6 +339,10 @@ case class RefFailed(exception: Throwable) extends RefNothing {
   def onComplete[U](onSuccess: Nothing => U, onNone: => U, onFail: Throwable => U) { 
     onFail(exception)
   } 
+  
+  def fold[B](initial: =>B)(each: (B, Nothing) => B) = this
+  
+  def onReady[U](onSuccess: RefMany[Nothing] => U, onNone: => U, onFail: Throwable => U) { onFail(exception) }  
 }
 
 /**
@@ -292,7 +355,10 @@ case object RefNone extends RefNothing {
   def onComplete[U](onSuccess: Nothing => U, onNone: => U, onFail: Throwable => U) { 
     onNone
   }
-   
+ 
+  def fold[B](initial: =>B)(each: (B, Nothing) => B) = this
+  
+  def onReady[U](onSuccess: RefMany[Nothing] => U, onNone: => U, onFail: Throwable => U) { onNone }
 }
 
 /**
