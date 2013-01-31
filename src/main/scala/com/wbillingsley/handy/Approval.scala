@@ -1,7 +1,8 @@
 package com.wbillingsley.handy
 
 import scala.collection.mutable
-import scala.language.implicitConversions
+import scala.language.{implicitConversions, postfixOps}
+import Ref._
 
 /**
  * A mutable set of permissions.  It's mutable so that in the case where
@@ -61,8 +62,7 @@ object Approval {
   
   implicit class WrappedRefApproval[T](val ra: Ref[Approval[T]]) extends AnyVal {
     
-    def ask(permission: Perm[T]):Ref[Approved] = {
-      
+    def askOne (permission: Perm[T]):Ref[Approved] = {
       ra flatMap { a =>
         if (a.permissions contains permission)
           RefItself(Approved("Already approved"))
@@ -71,8 +71,13 @@ object Approval {
           for (approved <- pa) { a.permissions.add(permission) }
           pa
         }
+      }      
+    }
+    
+    def ask(permissions: Perm[T]*):Ref[Approved] = {
+      ra flatMap { approval =>
+      	permissions.foldLeft[Ref[Approved]](Approved("Nothing to approve") itself){ (appr, perm) => appr.flatMap{ a => askOne(perm) } }
       }
-      
     }
     
   }
