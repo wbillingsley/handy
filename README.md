@@ -22,7 +22,7 @@ Sometimes we have objects to pass around. Sometimes we've only got the ID of the
     doSomethingWithUser(RefItself(fred))
     
     // or equivalently for the last one
-    doSomethingWithUser(fred itself)
+    doSomethingWithUser(fred.itself)
 
 So, we can have a method that accepts a `Ref[User]` and don't have to decide in advance whether that method will actually need to look the user up.
 
@@ -61,7 +61,7 @@ The upshot of this so far is we can quickly write how our program works in terms
 
 So the following code
 
-    for (p <- pageById, u <- p.createdBy, org <- u.organisation) yield org
+    for (p <- pageById; u <- p.createdBy; org <- u.organisation) yield org
   
 Will still return a `Ref[Organisation]` even if pages are looked up synchonrously and users are looked up asynchronously.
 
@@ -73,10 +73,10 @@ With `RefMany`, we can have the following
     val approval = Approval(loggedInUser)
     val page = RefById(classOf[Page], pageId)
     val results = for (
-      a <- approval ask CanRead(page),
-      p <- page,
+      a <- approval ask CanRead(page);
+      p <- page;
       h <- p.historyItems 
-    ) yield { h toJson }
+    ) yield { h.toJson }
 
 and the outcome is a `RefMany[JSON]`. And again we can decide later what to have underlying that.
 
@@ -129,7 +129,7 @@ And, `CanDoFoo` gets given a reference to the `Approval` when it's asked. This i
 
 So your business logic is now returning a `Ref[Something]` or a `RefMany[Something]`. Your web framework meanwhile needs to write out HTTP responses. And different web frameworks have different classes for doing this.
 
-So, we do is use the "Pimp my library" pattern to convert your Refs into whatever your web framework wants.
+So, we do is use an implicit method or two to convert your Refs into whatever your web framework wants.
 
 Now, if you know you're going to be doing everything synchronously, you can just call `ref.fetch` to turn your `Ref` into a `ResolvedRef` and pattern match on it.
 
@@ -171,7 +171,7 @@ Most of your controllers look like this:
     val approval = Approval(loggedInUser)
     val page = RefById(classOf[Page], pageId)
     val results = for (
-      a <- approval ask CanRead(page),
+      a <- approval ask CanRead(page);
       p <- page
     ) yield { p toJson }
 
