@@ -16,7 +16,7 @@ The Intelligent Book has shifted database and web-framework a few times in its l
 
 Sometimes we have objects to pass around. Sometimes we've only got the ID of the object, and haven't gone and looked it up yet.
 
-    def doSomethingWithUser(user: RefOne[User]) { ... }
+    def doSomethingWithUser(user: Ref[User]) { ... }
 
     doSomethingWithUser(RefById(classOf[User], 1234))
     doSomethingWithUser(RefItself(fred))
