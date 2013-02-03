@@ -220,7 +220,9 @@ trait RefMany[+T] extends RSuper[T] {
 
   def flatMapMany[B](func: T => RefMany[B]):RefMany[B] 
   
-  def withFilter(func: T => Boolean):RefMany[T]  
+  def withFilter(func: T => Boolean):RefMany[T] 
+  
+  def first:Ref[T]
   
   /**
    * A fold across this (possibly asynchronous) collection
@@ -233,7 +235,6 @@ trait RefMany[+T] extends RSuper[T] {
    * entry is available (or that there is an Enumerator ready to stream results from the database).
    */
   def onReady[U](onSuccess: RefMany[T] => U, onNone: => U, onFail: Throwable => U):Unit  
-  
   
 }
 
@@ -322,6 +323,8 @@ trait RefNothing extends ResolvedRef[Nothing] with ResolvedRefMany[Nothing] {
   def toTraversable = Seq.empty  
      
   def withFilter(p: Nothing => Boolean) = this  
+  
+  def first = this
   
 }
 

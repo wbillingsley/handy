@@ -171,6 +171,8 @@ class RefFutureRefMany[+T](val futureRef: Future[RefMany[T]]) extends RefMany[T]
     }
   
   }
+  
+  def first = new RefFutureRef(futureRef.map(_.first))
 
   
 }
