@@ -17,7 +17,9 @@ object Security {
   }
 }
 
-case class CanRead(page: Ref[Page]) extends PermOnIdRef[User, Page, Int](page) {
+import AppItem.gg
+
+case class CanRead(page: Ref[Page]) extends PermOnIdRef[User, Page](page) {
 
   def resolve(prior: Approval[User]): Ref[Approved] = {
     (for (p <- page if p.isPublic) yield 
@@ -27,7 +29,7 @@ case class CanRead(page: Ref[Page]) extends PermOnIdRef[User, Page, Int](page) {
   
 }
 
-case class CanEdit(page: Ref[Page]) extends PermOnIdRef[User, Page, Int](page) {
+case class CanEdit(page: Ref[Page]) extends PermOnIdRef[User, Page](page) {
 
   def resolve(prior: Approval[User]): Ref[Approved] = hasRole(prior.who, Editor)
 

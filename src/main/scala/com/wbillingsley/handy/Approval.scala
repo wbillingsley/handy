@@ -45,11 +45,12 @@ abstract class Perm[T] {
  * This overrides the equals operator to consider references equal if they have the same class and the
  * same id.  So, CanEdit(RefItself(Page1)) == CanEdit(RefById(classof[Page], 1))
  */
-abstract class PermOnIdRef[U, +T, K](what: Ref[T])(implicit g:GetsId[T, K]) extends Perm[U] {
+abstract class PermOnIdRef[U, T](val what: Ref[T])(implicit val g:GetsId[_ >: T, _]) extends Perm[U] {
   
   override def equals(other:Any) = {
     (this.getClass == other.getClass) && {
-      what.sameId(other.asInstanceOf[Ref[T]])(g)
+      val o = other.asInstanceOf[PermOnIdRef[U, T]]
+      what.getId(g) == o.what.getId(g)
     }
   }
   
