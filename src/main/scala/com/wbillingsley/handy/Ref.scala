@@ -75,6 +75,15 @@ object Ref {
       from.flatMapOne(f)
     }    
   }
+
+  /** 
+   * FlatMap from one to option returns a singular Ref.
+   */
+  implicit object OneToOption extends RCFMT[Ref, Option, Ref] {    
+    def flatMap[A, B](from: Ref[A], f: A => Option[B]) = {
+      from.flatMapOne(item => Ref(f(item)))      
+    }    
+  }  
   
   /** 
    * FlatMap from one to many returns a RefMany.
