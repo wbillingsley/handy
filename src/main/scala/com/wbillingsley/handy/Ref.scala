@@ -245,6 +245,14 @@ trait RefMany[+T] extends RSuper[T] {
    */
   def onReady[U](onSuccess: RefMany[T] => U, onNone: => U, onFail: Throwable => U):Unit  
   
+  /**
+   * Converts this to a reference to a collection
+   */
+  def toRefOne:Ref[TraversableOnce[T]] = {
+    import scala.collection.mutable.Buffer    
+    fold(Buffer.empty[T]){(buf, item) => buf.append(item); buf}
+  }
+  
 }
 
 object RefMany {
@@ -334,7 +342,8 @@ trait RefNothing extends ResolvedRef[Nothing] with ResolvedRefMany[Nothing] {
   def withFilter(p: Nothing => Boolean) = this  
   
   def first = this
-  
+    
+  override def toRefOne = this
 }
 
 

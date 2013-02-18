@@ -54,6 +54,7 @@ case class RefTraversableOnce[T, C[T] <: TraversableOnce[T]](val items: C[T]) ex
     if(!items.isEmpty) onSuccess(this) else onNone
   }
   
+  override def toRefOne = RefItself(items)
   
 }
 
