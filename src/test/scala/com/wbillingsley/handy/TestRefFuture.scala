@@ -37,4 +37,30 @@ class TestRefFuture {
     }
     assertEquals(List(1, 2, 3), after.fetch.toList)        
   }
+  
+  @Test
+  def complete {
+    val fut = future { 5 } 
+    val futRef = fut.toRef
+    var a = 0
+    
+    futRef.onComplete(
+        onSuccess = { s =>
+          println("Setting it to " + s)
+          a = s
+          println("done it")
+        },
+        onNone = { println("it was none") },
+        onFail = { f => println("it failed") }
+    )
+    
+    /*
+     * This might be a shaky test -- 
+     * it relies on the futRef.onComplete having happened first
+     * (essentially relying on us having created a future that is
+     *  already completed) 
+     */
+    fut.onComplete(v => assertEquals(5, a))
+    
+  }
 }

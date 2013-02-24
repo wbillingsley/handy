@@ -24,11 +24,13 @@ class RefFuture[+T](val future: Future[T]) extends Ref[T] {
     future.foreach(f)
   }
   
-  def onComplete[U](onSuccess: T => U, onNone: => U, onFail: Throwable => U) {
-    future onSuccess { case _ => onSuccess(_) }
-    future onFailure {
+  def onComplete[U](onSuccess: (T) => U, onNone: => U, onFail: Throwable => U) {
+    future.onSuccess { 
+      case v => onSuccess(v)
+    }    
+    future.onFailure {
       case n:NoSuchElementException => onNone
-      case _ => onFail(_) 
+      case f => onFail(f) 
     }
   }   
   
