@@ -166,7 +166,7 @@ trait Ref[+T] extends RSuper[T] {
   /**
    * Note that the way this is defined, you can flatMap from a RefOne to a RefMany.
    */
-  def flatMap[B, R[B], Result[B]](func: T => R[B])(implicit imp: RCFMT[Ref, R, Result]):Result[B] = imp.flatMap(this, func)
+  def flatMap[B, R[B], Result[_]](func: T => R[B])(implicit imp: RCFMT[Ref, R, Result]):Result[B] = imp.flatMap(this, func)
   
   def flatMapOne[B](func: T => Ref[B]):Ref[B] 
 

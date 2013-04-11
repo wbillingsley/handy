@@ -1,20 +1,20 @@
 name := "handy"
 
-organization := "com.wbillingsley"
+organization in ThisBuild := "com.wbillingsley"
 
-version := "0.4-SNAPSHOT"
+version in ThisBuild := "0.4-SNAPSHOT"
 
-scalaVersion := "2.10.0"
+scalaVersion in ThisBuild := "2.10.0"
 
 libraryDependencies += "junit" % "junit" % "4.7" % "test"
 
 libraryDependencies += "com.novocode" % "junit-interface" % "0.7" % "test" 
 
-scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
+scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation", "-feature")
 
-crossScalaVersions := Seq("2.10.0")
+crossScalaVersions in ThisBuild := Seq("2.10.0")
 
-publishTo <<= version { (v: String) =>
+publishTo in ThisBuild <<= version { (v: String) =>
   val localm = "/Users/wbillingsley/sourcecode/external/repos/mymavenrepo/"
   if (v.trim.endsWith("SNAPSHOT"))
     Some(Resolver.file("snapshots", new File(localm + "snapshots")))

@@ -177,5 +177,49 @@ Most of your controllers look like this:
 
 and implicitly convert into a response.    
 
+### Unpacking RefMany
+
 We can do similar things with `RefMany`, but for instance in the asynchronous case we might want to take advantage of `Iteratees`.
 
+For instance, this is a snippet of code from the Intelligent Book (using the Play Framework).  Getting the `RefMany` is seven lines of code.  Converting it to an enumerator is one line of code: `comments.enumerator through enumeratee`. The bulk of the method is an enumeratee for converting Comments to JSON array mark-up.
+
+You might wonder why use an Enumerator and Iteratee for this, when there's only around 50 comments being returned. The reason is that `IBJson.toJson(c.itself)` might involve another database request to get the commenter's name etc -- I haven't worried too much yet about denormalising 
+
+
+    def getRecentChatComments(
+      bookId:String, afterId:Option[String], beforeId:Option[String]
+    ) = WithEm { Action { request =>
+    
+	   for (
+	       book <- RefById(classOf[Book], bookId);
+	       tok = Approval(SessionStuff.loggedInReader(request))
+	   ) yield {
+	    val before = Ref.fromOptionId(classOf[ChatComment], beforeId)
+	    val after = Ref.fromOptionId(classOf[ChatComment], afterId)
+	    val comments = ChatModel.getRecentChatComments(
+	      book.itself, after, before, tok
+	    )
+     
+        // This converts an Enumerator[ChatComment] to an Enumerator[String]
+	    var sep = ""
+	    val enumeratee = Enumeratee.mapM[ChatComment]{ c => 
+	      (for (json <- IBJson.toJson(c.itself)) yield {
+	        val r = json.toString + sep
+	        sep = ","
+	        r
+	      }).toFuture 
+	    } compose Enumeratee.filter(!_.isEmpty) compose Enumeratee.map(_.get)
+
+        val enumerator = Enumerator("{ \"comments\" : [") andThen 
+          (comments.enumerator through enumeratee) andThen 
+          Enumerator("] }")
+          
+        ChunkedResult[String](
+	      header = ResponseHeader(Status.OK, /* .. elided headers .. */),
+	      chunks = {iteratee:Iteratee[String, Unit] => enumerator.apply(iteratee) }
+	    )	    
+      }
+    }}
+    
+    
+ 
