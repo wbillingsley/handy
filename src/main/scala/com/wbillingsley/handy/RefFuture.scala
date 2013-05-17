@@ -211,7 +211,7 @@ class RefFutureOption[+T](val future: Future[Option[T]]) extends Ref[T] {
   }   
   
   override def orIfNone[B >: T](f: => Ref[B]) = {
-     val fut = future map { Ref(_) } recover { case _ => f }
+     val fut = future map { Ref(_) orIfNone f } recover { case _ => f }
      new RefFutureRef(fut)
   }
     
