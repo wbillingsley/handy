@@ -377,7 +377,7 @@ case object RefNone extends RefNothing {
     onNone
   }
  
-  def fold[B](initial: =>B)(each: (B, Nothing) => B) = this
+  def fold[B](initial: =>B)(each: (B, Nothing) => B) = RefItself(initial)
   
   def onReady[U](onSuccess: RefMany[Nothing] => U, onNone: => U, onFail: Throwable => U) { onNone }
 }
