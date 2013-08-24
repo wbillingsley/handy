@@ -7,9 +7,16 @@ import Ref._
 /**
  * A mutable set of permissions.  It's mutable so that in the case where
  * we ask for, but do not require, a permission we can cache the 
- * permission even if the prgrammer didn't assign the return typee
+ * permission even if the programmer didn't assign the return types
+ * 
+ * Approvals also have a LookUpCache, which can set and used to avoid
+ * calling the database mutliple times for the same item.
  */
-case class Approval[T](val who: Ref[T], val permissions: mutable.Set[Perm[T]] = mutable.Set.empty[Perm[T]]) {
+case class Approval[T](
+    val who: Ref[T], 
+    val permissions: mutable.Set[Perm[T]] = mutable.Set.empty[Perm[T]],
+    val cache:LookUpCache = new LookUpCache
+) {
   
 }
 
