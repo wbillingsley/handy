@@ -34,8 +34,6 @@ case class RefById[T, K](clazz : scala.Predef.Class[T], id: K) extends Ref[T] wi
   
   def toOption = fetch.toOption
   
-  def getId = Some(id)
-  
   def isTraversableAgain = true
   
   def toIterator = fetch.toIterator
