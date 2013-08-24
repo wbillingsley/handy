@@ -42,15 +42,25 @@ abstract class Perm[T] {
 
 /**
  * A permission on a reference that has a gettable id.  For instance CanEdit(page: Ref[Page]).
- * This overrides the equals operator to consider references equal if they have the same class and the
- * same id.  So, CanEdit(RefItself(Page1)) == CanEdit(RefById(classof[Page], 1))
+ * This overrides the equals operator to consider two permissions equal if they are the same permission
+ * and have the same idea  
+ * So, CanEditPage(RefItself(Page1)) == CanEditPage(RefById(classof[Page], 1))
+ * 
+ * Beware, however, that by default, equality only considers the ID, and not the type T, unless clazz is specified 
+ * So, PermOnIdRef(RefById(classof[Page], 1)) == PermOnIdRef(RefById(classof[User], 1))
+ * But PermOnIdRef(RefById(classof[Page], 1), classOf[Page]) != PermOnIdRef(RefById(classof[User], 1), classOf[User])
+ * 
  */
-abstract class PermOnIdRef[U, T](val what: Ref[T])(implicit val g:GetsId[T, _]) extends Perm[U] {
+abstract class PermOnIdRef[U, T](val what: Ref[T], val clazz: Class[_ <: T] = classOf[Nothing])(implicit val g:GetsId[T, _]) extends Perm[U] {
+  
+  override def hashCode = {
+    (getClass, what.getId, clazz).hashCode
+  }
   
   override def equals(other:Any) = {
     (this.getClass == other.getClass) && {
       val o = other.asInstanceOf[PermOnIdRef[U, T]]
-      what.getId(g) == o.what.getId(g)
+      clazz == o.clazz && what.getId(g) == o.what.getId(g)
     }
   }
   
