@@ -5,31 +5,59 @@ package com.wbillingsley.handy
  */
 class LookUpCache {
   
-  case class Key[T, ID](clazz: Class[T], id:Option[ID])
+  val cache = scala.collection.mutable.Map.empty[Any, List[(Class[_], Ref[_])]]
   
-  val cache = scala.collection.mutable.Map.empty[Key[_, _], Ref[_]]
-  
-  private def cacheLookup[T, ID](rbi: RefById[T, ID]):Ref[T] = {
-    val key = Key(rbi.clazz, rbi.getId)
-    cache.get(key).getOrElse({
-      val l = rbi.lookUp
-      cache.put(key, l)
-      l
-    }).asInstanceOf[Ref[T]]
+  private def cacheLookup[T, K, KK](rbi: RefById[T, K])(implicit g: GetsId[T, KK]):Ref[T] = {
+    
+    rbi.getId match {
+      case Some(id) => { 
+        val list = cache.getOrElse(id, Nil)        
+        val assignable = for (
+          (clazz, ref) <- list.find {
+          	case (clazz, ref) => {
+          	  rbi.clazz isAssignableFrom clazz
+          	}
+          }
+        ) yield ref
+        
+        assignable.getOrElse({
+          val l = rbi.lookUp
+          remember(rbi.clazz, l)
+          l 
+        }).asInstanceOf[Ref[T]]
+      }
+      case None => rbi
+    }
+
   }
   
-  private def remember[T, KK](ri:RefItself[T])(implicit g: GetsId[T, KK]) = {
-    val key = Key(ri.item.getClass, ri.getId)
-    cache.put(key, ri)
-    ri
+  private def remember[T, KK](clazz: Class[_], r:Ref[T])(implicit g: GetsId[T, KK]) = {
+    r.getId match {
+      case Some(id) => {
+        import scala.language.existentials
+        
+        val l = (clazz, r) :: cache.getOrElse(id, Nil)
+        cache.put(id, l)
+        r
+      }
+      case None => r
+    }
   }
   
-  def apply[T, KK](r: Ref[T])(implicit g: GetsId[T, KK]):Ref[T] = {
+  def apply[T, TT >: T, KK](r: Ref[T], clazz:Class[TT])(implicit g: GetsId[T, KK]):Ref[T] = {
     r match {
       case rbi:RefById[T, _] => cacheLookup(rbi)
-      case ri:RefItself[T] => remember(ri)
+      case ri:RefItself[T] => remember(clazz, ri)
       case r:Ref[T] => r
     }
   }  
 
+  def apply[T, TT >: T, K, KK](rbi: RefById[T, K])(implicit g: GetsId[T, KK]):Ref[T] = {
+	cacheLookup(rbi)
+  }
+  
+  def apply[T, KK](ri: RefItself[T])(implicit g: GetsId[T, KK]):Ref[T] = {
+	remember(ri.item.getClass, ri)
+  }
+  
 }
