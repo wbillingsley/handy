@@ -8,6 +8,8 @@ scalaVersion in ThisBuild := "2.10.0"
 
 libraryDependencies += "junit" % "junit" % "4.7" % "test"
 
+libraryDependencies += "org.specs2" %% "specs2" % "2.1.1" % "test"
+
 libraryDependencies += "com.novocode" % "junit-interface" % "0.7" % "test" 
 
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation", "-feature")
