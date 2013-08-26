@@ -4,7 +4,7 @@ organization in ThisBuild := "com.wbillingsley"
 
 version in ThisBuild := "0.4-SNAPSHOT"
 
-scalaVersion in ThisBuild := "2.10.0"
+scalaVersion in ThisBuild := "2.10.2"
 
 libraryDependencies += "junit" % "junit" % "4.7" % "test"
 
@@ -14,7 +14,7 @@ libraryDependencies += "com.novocode" % "junit-interface" % "0.7" % "test"
 
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation", "-feature")
 
-crossScalaVersions in ThisBuild := Seq("2.10.0")
+crossScalaVersions in ThisBuild := Seq("2.10.2")
 
 publishTo in ThisBuild <<= version { (v: String) =>
   val localm = "/Users/wbillingsley/sourcecode/external/repos/mymavenrepo/"
