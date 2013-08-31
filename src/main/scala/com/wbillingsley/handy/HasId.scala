@@ -25,3 +25,25 @@ object GetsNoId extends GetsId[Any, Nothing] {
   
   def canonical(key:Any) = None
 }
+
+
+import scala.util.Try
+
+trait HasStringId extends HasId[String] {
+  
+}
+
+object HasStringId {
+  
+  implicit object GetsStringId extends GetsId[HasStringId, String] {
+    
+    var pf:PartialFunction[Any, Option[String]] = { 
+      case s:String => Some(s)
+      case _ => None 
+    }
+    
+	def getId(obj:HasStringId) = Some(obj.id)
+  
+	def canonical(key:Any) = pf(key) 
+  }   
+}
