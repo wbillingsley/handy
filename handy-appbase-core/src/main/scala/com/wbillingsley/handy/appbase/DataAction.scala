@@ -18,18 +18,35 @@ object DataAction extends AcceptExtractors {
   var onForbidden: (Refused, Request[AnyContent]) => SimpleResult[_] = { (refused, request) => Results.Forbidden("No forbidden action has been set") }
   
   var onInternalServerError: (Throwable, Request[AnyContent]) => SimpleResult[_] = { (exc, request) =>  Results.InternalServerError("No 500 action has been set") }
+    
   
-  def respondWith(block: => Ref[SimpleResult[_]]) = Action { implicit request => 
-    refResultToResult(block)
+  /**
+   * Ensures that the session key is set after this response. 
+   * This might however prevent other session variables set in the contained action from sticking
+   */
+  def forceSession[A](a:Action[A])(implicit ufr:UserFromRequest[_]) = Action(a.parser) { implicit request =>
+    val wrapped = new AppbaseRequest(request)
+    ensuringSessionKey(wrapped, a(request))
   }
   
+  protected def ensuringSessionKey(wrapped:AppbaseRequest[_, _], result:Result) = {
+    if (wrapped.session.get("sessionKey") == Some(wrapped.sessionKey)) {
+      result
+    } else {
+      result.withSession(wrapped.session + "sessionKey" -> wrapped.sessionKey)
+    }
+  }
+  
+  /**
+   * An action returning a single item that can be converted into JSON for the requesting user
+   */
   def one[T, U](block: => Ref[T])(implicit jc:JsonConverter[T, U], ufr:UserFromRequest[U]) = Action { implicit request =>
 	request match {
       case Accepts.Html() => homeAction(request)
       case Accepts.Json() => {
         try {
           val wrapped = new AppbaseRequest(request)
-          val res = for (item <- block; j <- jc.toJsonFor(item, wrapped.approval)) yield Results.Ok(j)
+          val res = for (item <- block; j <- jc.toJsonFor(item, wrapped.approval)) yield ensuringSessionKey(wrapped, Results.Ok(j))
           refResultToResult(res)
         } catch {
           case exc:Throwable => refResultToResult(RefFailed(exc))
@@ -38,13 +55,16 @@ object DataAction extends AcceptExtractors {
     }    
   }
 
+  /**
+   * An action returning a single item that can be converted into JSON for the requesting user
+   */
   def one[T, U](block: (AppbaseRequest[AnyContent, U]) => Ref[T])(implicit jc:JsonConverter[T, U], ufr:UserFromRequest[U]) = Action { implicit request =>
 	request match {
       case Accepts.Html() => homeAction(request)
       case Accepts.Json() => {
         try {
           val wrapped = new AppbaseRequest(request)
-          val res = for (item <- block(wrapped); j <- jc.toJsonFor(item, wrapped.approval)) yield Results.Ok(j)
+          val res = for (item <- block(wrapped); j <- jc.toJsonFor(item, wrapped.approval)) yield ensuringSessionKey(wrapped, Results.Ok(j))
           refResultToResult(res)
         } catch {
           case exc:Throwable => refResultToResult(RefFailed(exc))
@@ -54,13 +74,16 @@ object DataAction extends AcceptExtractors {
   }
 
 
+  /**
+   * An action returning a single item that can be converted into JSON for the requesting user
+   */
   def one[T, U, A](bodyParser: BodyParser[A])(block: (Request[AnyContent]) => Ref[T])(implicit jc:JsonConverter[T, U], ufr:UserFromRequest[U]) = Action { implicit request =>
 	request match {
       case Accepts.Html() => homeAction(request)
       case Accepts.Json() => {
         try {
           val wrapped = new AppbaseRequest(request)
-          val res = for (item <- block(wrapped); j <- jc.toJsonFor(item, wrapped.approval)) yield Results.Ok(j)
+          val res = for (item <- block(wrapped); j <- jc.toJsonFor(item, wrapped.approval)) yield ensuringSessionKey(wrapped, Results.Ok(j))
           refResultToResult(res)
         } catch {
           case exc:Throwable => refResultToResult(RefFailed(exc))
@@ -70,6 +93,9 @@ object DataAction extends AcceptExtractors {
   }
   
   
+  /**
+   * An action returning a many items that can be converted into JSON for the requesting user
+   */
   def many[T, U](block: => RefMany[T])(implicit jc:JsonConverter[T, U], ufr:UserFromRequest[U]) = Action { implicit request =>
 	request match {
       case Accepts.Html() => homeAction(request)
@@ -78,7 +104,7 @@ object DataAction extends AcceptExtractors {
           val wrapped = new AppbaseRequest(request)
           val j = for (item <- block; j <- jc.toJsonFor(item, wrapped.approval)) yield j          
           val en = Enumerator("[") andThen j.enumerate.stringify andThen Enumerator("]") andThen Enumerator.eof[String]
-          Results.Ok.stream(en).as("application/json")                              
+          ensuringSessionKey(wrapped, Results.Ok.stream(en).as("application/json"))                              
         } catch {
           case exc:Throwable => refResultToResult(RefFailed(exc))
         }
@@ -86,6 +112,9 @@ object DataAction extends AcceptExtractors {
     }    
   }  
   
+  /**
+   * An action returning a many items that can be converted into JSON for the requesting user
+   */
   def many[T, U](block: (AppbaseRequest[AnyContent, U]) => RefMany[T])(implicit jc:JsonConverter[T, U], ufr:UserFromRequest[U]) = Action { implicit request =>
 	request match {
       case Accepts.Html() => homeAction(request)
@@ -94,7 +123,7 @@ object DataAction extends AcceptExtractors {
           val wrapped = new AppbaseRequest(request)
           val j = for (item <- block(wrapped); j <- jc.toJsonFor(item, wrapped.approval)) yield j          
           val en = Enumerator("[") andThen j.enumerate.stringify andThen Enumerator("]") andThen Enumerator.eof[String]
-          Results.Ok.stream(en).as("application/json")                              
+          ensuringSessionKey(wrapped, Results.Ok.stream(en).as("application/json"))                             
         } catch {
           case exc:Throwable => refResultToResult(RefFailed(exc))
         }
@@ -102,6 +131,9 @@ object DataAction extends AcceptExtractors {
     }     
   }  
   
+  /**
+   * An action returning a many items that can be converted into JSON for the requesting user
+   */
   def many[T, U, A](bodyParser: BodyParser[A])(block: (Request[AnyContent]) => RefMany[T])(implicit jc:JsonConverter[T, U], ufr:UserFromRequest[U]) = Action { implicit request =>
 	request match {
       case Accepts.Html() => homeAction(request)
@@ -110,7 +142,7 @@ object DataAction extends AcceptExtractors {
           val wrapped = new AppbaseRequest(request)
           val j = for (item <- block(wrapped); j <- jc.toJsonFor(item, wrapped.approval)) yield j          
           val en = Enumerator("[") andThen j.enumerate.stringify andThen Enumerator("]") andThen Enumerator.eof[String]
-          Results.Ok.stream(en).as("application/json")                              
+          ensuringSessionKey(wrapped, Results.Ok.stream(en).as("application/json"))                            
         } catch {
           case exc:Throwable => refResultToResult(RefFailed(exc))
         }
@@ -123,6 +155,9 @@ object DataAction extends AcceptExtractors {
    */
   val errorCodeMap = scala.collection.mutable.Map.empty[Class[_], Int]
   
+  /**
+   * Converts a Ref[Result] to an asychronous result
+   */
   implicit def refResultToResult(r:Ref[Result])(implicit request:Request[AnyContent]) = {
     Results.Async {
       import scala.concurrent._
