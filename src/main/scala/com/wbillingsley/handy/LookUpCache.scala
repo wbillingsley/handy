@@ -7,7 +7,7 @@ class LookUpCache {
   
   val cache = scala.collection.mutable.Map.empty[Any, List[(Class[_], Ref[_])]]
   
-  private def cacheLookup[T, K, KK](rbi: RefById[T, K])(implicit g: GetsId[T, KK]):Ref[T] = {    
+  def cacheLookup[T, K, KK](rbi: RefById[T, K])(implicit g: GetsId[T, KK]):Ref[T] = {    
     rbi.getId match {
       case Some(id) => { 
         find(rbi.clazz, id).getOrElse({
@@ -20,7 +20,7 @@ class LookUpCache {
     }
   }
   
-  private def cacheLookup[T, K, KK](li: LazyId[T, K])(implicit g: GetsId[T, KK]):Ref[T] = {    
+  def cacheLookup[T, K, KK](li: LazyId[T, K])(implicit g: GetsId[T, KK]):Ref[T] = {    
     li.getId match {
       case Some(id) => { 
         find(li.rbi.clazz, id).getOrElse({
@@ -44,7 +44,7 @@ class LookUpCache {
     ) yield ref.asInstanceOf[Ref[T]]
   }  
   
-  private def remember[T, KK](clazz: Class[_], r:Ref[T])(implicit g: GetsId[T, KK]) = {
+  def remember[T, KK](clazz: Class[_], r:Ref[T])(implicit g: GetsId[T, KK]) = {
     r.getId match {
       case Some(id) => {
         import scala.language.existentials
