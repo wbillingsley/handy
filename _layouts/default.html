@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title>{{ page.title }}</title>
+        <meta name="viewport" content="width=device-width">
+
+        <!-- Source Sans Pro -->
+        <script src="//use.edgefonts.net/source-sans-pro.js"></script> 
+
+        <!-- Pure CSS -->
+        <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.2.1/pure-min.css">
+
+        <!-- JQuery -->
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+
+        <!-- Bootstrap -->
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css">
+        <!-- Latest compiled and minified JavaScript -->
+        <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+
+        <!-- Font-Awesome -->
+        <link href="//netdna.bootstrapcdn.com/font-awesome/3.2.1/css/font-awesome.min.css" rel="stylesheet">
+
+        <!-- syntax highlighting CSS -->
+        <link rel="stylesheet" href="{{ site.baseurl }}/css/syntax.css">
+
+        <!-- Custom CSS -->
+        <link rel="stylesheet" href="{{ site.baseurl }}/css/impressory.css">
+
+    </head>
+    <body>
+
+      <div class="navbar navbar-static-top">
+        <div class="container">
+            <a href="http://wbillingsley.github.io/handy" class="navbar-brand">Handy</a>
+
+            <ul class="nav navbar-nav">
+                <li><a href="https://github.com/wbillingsley/handy">Sourcecode</a></li>
+                <li><a href="https://github.com/wbillingsley/handy/issues">Bugs</a></li>
+                <li><a href="http://wbillingsley.blogspot.com">Will Billingsley's Blog</a></li>
+            </ul> 
+
+            <p class="navbar-text pull-right">
+              <i class="icon-twitter"></i>
+              <a href="https://twitter.com/wbillingsley">@wbillingsley</a>
+            </p>           
+        </div>
+      </div>
+
+        <div class="navbar secondary">
+          <div class="container">
+
+              <ul class="nav navbar-nav">
+              <li><a href="{{ site.baseurl }}/">Home</a></li>
+              <li><a href="{{ site.baseurl }}/ref.html">Ref</a></li>
+              <li><a href="{{ site.baseurl }}/approval.html">Approval</a></li>
+              </ul> 
+          </div>
+        </div>      
+
+        <div class="container">
+        {{ content }}
+        </div>
+
+
+
+    </body>
+</html>
