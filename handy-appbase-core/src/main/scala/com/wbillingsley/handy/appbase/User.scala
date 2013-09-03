@@ -3,32 +3,29 @@ package com.wbillingsley.handy.appbase
 import com.wbillingsley.encrypt.Encrypt
 import com.wbillingsley.handy.Ref
 
-trait User[I] {
+trait User[I <: Identity, PL <: PasswordLogin] {
   
   val id:String
     
-  var username: Option[String]
+  val name: Option[String]
 
-  var salt: Option[String] = Some(Encrypt.genSaltB64)
+  val nickname: Option[String]
+ 
+  val pwlogin: PL
 
-  var pwhash: Option[String] = None
+  val identities: Seq[I]
 
-  var email: Option[String] = None
+  val avatar: Option[String] 
 
-  var name: Option[String] = None
-
-  var nickname: Option[String] = None
-
-  var identities: Seq[I] = Seq.empty
-
-  var avatar: Option[String] = None
-
-  val created: Long = System.currentTimeMillis
-
-  def hash(password: String) = for (s <- salt) yield Encrypt.encrypt(s, password)
+  val created: Long 
 
 }
 
+object User {
+  
+  def defaultCreated = System.currentTimeMillis  
+
+}
 
 trait UserDAO[U, I] {
   
