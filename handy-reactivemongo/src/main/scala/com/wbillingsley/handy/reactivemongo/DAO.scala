@@ -143,23 +143,23 @@ trait DAO[T <: HasStringId] {
    */
   def unsaved:T
   
-  def updateAndFetch(query:BSONDocument, update:BSONDocument):Ref[T] = {
+  def updateAndFetch(query:BSONDocument, update:BSONDocument, upsert:Boolean = false):Ref[T] = {
     val c = coll
-    val fle = c.update(query, update, GetLastError(true)) 
+    val fle = c.update(query, update, GetLastError(true), upsert=upsert) 
     val fut = fle.map { _ => new RefFutureOption(c.find(query).one[T]) } recover { case x:Throwable => RefFailed(x) }
     new RefFutureRef(fut)
   }
   
-  def updateSafe(query:BSONDocument, update:BSONDocument, item:T):Ref[T] = {
+  def updateSafe(query:BSONDocument, update:BSONDocument, item:T, upsert:Boolean = false):Ref[T] = {
     val c = coll
-    val fle = c.update(query, update, GetLastError(true)) 
+    val fle = c.update(query, update, GetLastError(true), upsert=upsert) 
     val fut = fle.map { _ => RefItself(item) } recover { case x:Throwable => RefFailed(x) }
     new RefFutureRef(fut)
   }
 
-  def updateUnsafe(query:BSONDocument, update:BSONDocument, item:T):Ref[T] = {
+  def updateUnsafe(query:BSONDocument, update:BSONDocument, item:T, upsert:Boolean = false):Ref[T] = {
     val c = coll
-    val fle = c.update(query, update, GetLastError(false)) 
+    val fle = c.update(query, update, GetLastError(false), upsert=upsert) 
     val fut = fle.map { _ => RefItself(item) } recover { case x:Throwable => RefFailed(x) }
     new RefFutureRef(fut)
   }
@@ -173,5 +173,9 @@ trait DAO[T <: HasStringId] {
   
   def findMany(query:BSONDocument):RefMany[T] = {
     new RefEnumIter(coll.find(query).cursor[T].enumerateBulks)
+  }
+  
+  def findOne(query:BSONDocument):Ref[T] = {
+    new RefFutureOption(coll.find(query).one[T])    
   }
 }
