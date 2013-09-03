@@ -14,7 +14,7 @@ trait DAO[T <: HasStringId] {
   /**
    * Partial function for looking up RefById to this class
    */
-  val lookupPf: PartialFunction[RefById[Any, Any], Ref[T]] = { 
+  val lookupPf: PartialFunction[RefById[_, _], Ref[T]] = { 
     case r if r.clazz isAssignableFrom(clazz) => {
       byId(r.id.toString)
     }
@@ -23,12 +23,12 @@ trait DAO[T <: HasStringId] {
   /**
    * Partial function for looking up RefManyById to this class
    */
-  val lookupManyPf: PartialFunction[RefManyById[Any, Any], RefMany[T]] = { 
+  val lookupManyPf: PartialFunction[RefManyById[_, _], RefMany[T]] = { 
     case r if r.clazz isAssignableFrom(clazz) => {
       manyById(r.rawIds.map(_.toString))
     }
-  }
-      
+  }  
+  
   /**
    * A reference to the class object for the type this retrieves.
    * Used because the generic type is erased, but at runtime we need to know the
