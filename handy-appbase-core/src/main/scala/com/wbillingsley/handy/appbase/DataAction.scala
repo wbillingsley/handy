@@ -1,23 +1,194 @@
 package com.wbillingsley.handy.appbase
 
-import play.api.mvc.{Request, AnyContent, AcceptExtractors, BodyParser, Action, SimpleResult, Result, Results}
+import play.api.mvc.{Request, RequestHeader, AnyContent, AcceptExtractors, BodyParser, BodyParsers, Action, SimpleResult, Result, Results}
 import play.api.libs.json.Json
 import play.api.libs.iteratee.Enumerator
 import com.wbillingsley.handy._
 import com.wbillingsley.handyplay.RefConversions._
 import JsonConverter._
-
 import scala.language.implicitConversions
+import play.api.mvc.EssentialAction
+import play.api.libs.iteratee.{Iteratee, Input, Step, Done}    
+import scala.concurrent.{Future, Promise}      
+
+
+case class DataAction[U](implicit ufr:UserFromRequest[U]) extends AcceptExtractors {
+
+  import DataAction._
+  
+  /**
+   * An action returning a single item that can be converted into JSON for the requesting user
+   */
+  def one[T](block: => Ref[T])(implicit jc:JsonConverter[T, U]) = EssentialAction { implicit request =>
+	request match {
+      case Accepts.Html() => homeAction(request)
+      case Accepts.Json() => {
+        try {
+          val ba = new BodyAction(BodyParsers.parse.anyContent)({ implicit request => 
+            val wrapped = new AppbaseRequest(request)
+            val res = for (item <- block; j <- jc.toJsonFor(item, wrapped.approval)) yield ensuringSessionKey(wrapped, Results.Ok(j))
+            val it = for (r <- res) yield doneIteratee(r)
+            refEE(it)
+          })
+          ba.apply(request)
+        } catch {
+          case exc:Throwable => refEE(RefFailed(exc))
+        }
+      }
+    }    
+  }  
+  
+
+  /**
+   * An action returning a single item that can be converted into JSON for the requesting user
+   */
+  def one[T](block: AppbaseRequest[AnyContent, U] => Ref[T])(implicit jc:JsonConverter[T, U]) = EssentialAction { implicit request =>
+	request match {
+      case Accepts.Html() => homeAction(request)
+      case Accepts.Json() => {
+        try {
+          val ba = new BodyAction(BodyParsers.parse.anyContent)({ implicit request => 
+            val wrapped = new AppbaseRequest(request)
+            val res = for (item <- block(wrapped); j <- jc.toJsonFor(item, wrapped.approval)) yield ensuringSessionKey(wrapped, Results.Ok(j))
+            val it = for (r <- res) yield doneIteratee(r)
+            refEE(it)
+          })
+          ba.apply(request)          
+        } catch {
+          case exc:Throwable => refEE(RefFailed(exc))
+        }
+      }
+    }     
+  }
+
+
+  /**
+   * An action returning a single item that can be converted into JSON for the requesting user
+   */
+  def one[T, A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => Ref[T])(implicit jc:JsonConverter[T, U]) = EssentialAction { implicit request =>
+	request match {
+      case Accepts.Html() => homeAction(request)
+      case Accepts.Json() => {
+        try {    
+          val ba = new BodyAction(bodyParser)({ implicit request => 
+            val wrapped = new AppbaseRequest(request)
+            val res = for (item <- block(wrapped); j <- jc.toJsonFor(item, wrapped.approval)) yield ensuringSessionKey(wrapped, Results.Ok(j))
+            val it = for (r <- res) yield doneIteratee(r)
+            refEE(it)
+          })
+          ba.apply(request)           
+        } catch {
+          case exc:Throwable => refEE(RefFailed(exc))
+        }
+      }
+    }         
+  }
+  
+  
+  /**
+   * An action returning a many items that can be converted into JSON for the requesting user
+   */
+  def many[T](block: => RefMany[T])(implicit jc:JsonConverter[T, U]) = EssentialAction { implicit request =>
+	request match {
+      case Accepts.Html() => homeAction(request)
+      case Accepts.Json() => {
+        try {
+          val ba = new BodyAction(BodyParsers.parse.anyContent)({ implicit request => 
+            val wrapped = new AppbaseRequest(request)
+            val j = for (item <- block; j <- jc.toJsonFor(item, wrapped.approval)) yield j          
+            val en = Enumerator("[") andThen j.enumerate.stringify andThen Enumerator("]") andThen Enumerator.eof[String]
+            val r = ensuringSessionKey(wrapped, Results.Ok.stream(en).as("application/json"))
+            doneIteratee(r)
+          })
+          ba.apply(request) 
+        } catch {
+          case exc:Throwable => refEE(RefFailed(exc))
+        }
+      }
+    }    
+  }  
+  
+  /**
+   * An action returning a many items that can be converted into JSON for the requesting user
+   */
+  def many[T](block: AppbaseRequest[AnyContent, U] => RefMany[T])(implicit jc:JsonConverter[T, U]) = EssentialAction { implicit request =>
+	request match {
+      case Accepts.Html() => homeAction(request)
+      case Accepts.Json() => {
+        try {
+          val ba = new BodyAction(BodyParsers.parse.anyContent)({ implicit request => 
+            val wrapped = new AppbaseRequest(request)
+            val j = for (item <- block(wrapped); j <- jc.toJsonFor(item, wrapped.approval)) yield j          
+            val en = Enumerator("[") andThen j.enumerate.stringify andThen Enumerator("]") andThen Enumerator.eof[String]
+            val r = ensuringSessionKey(wrapped, Results.Ok.stream(en).as("application/json"))
+            doneIteratee(r)
+          })
+          ba.apply(request) 
+        } catch {
+          case exc:Throwable => refEE(RefFailed(exc))
+        }        
+      }
+    }     
+  }  
+  
+  /**
+   * An action returning a many items that can be converted into JSON for the requesting user
+   */
+  def many[T, A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => RefMany[T])(implicit jc:JsonConverter[T, U]) = EssentialAction { implicit request =>
+	request match {
+      case Accepts.Html() => homeAction(request)
+      case Accepts.Json() => {
+        try {
+          val action = Action(bodyParser) { implicit request => 
+            val wrapped = new AppbaseRequest(request)
+            val j = for (item <- block(wrapped); j <- jc.toJsonFor(item, wrapped.approval)) yield j          
+            val en = Enumerator("[") andThen j.enumerate.stringify andThen Enumerator("]") andThen Enumerator.eof[String]
+            ensuringSessionKey(wrapped, Results.Ok.stream(en).as("application/json"))
+          }
+          action(request)
+        } catch {
+          case exc:Throwable => refEE(RefFailed(exc))
+        }
+      }
+    }         
+  }  
+}
+
 
 object DataAction extends AcceptExtractors {
   
-  var homeAction:Action[AnyContent] = Action(Results.NotFound("No home action has been set"))
+  def doneIteratee[A](res:Result) = Done[Array[Byte], Result](res, Input.Empty)     
+    
   
-  var onNotFound: (Request[AnyContent]) => SimpleResult[_] = { (request) => Results.NotFound("No 404 action has been set")}
+  /**
+   * Solves an annoying issue with EssentialAction and Action not playing nicely together
+   * (You can't get back from a Request[B] to a Request[AnyContent])
+   */
+  class BodyAction[A](parser:BodyParser[A])(block: Request[A] => Iteratee[Array[Byte], Result]) {
+    
+    
+	def apply(rh: RequestHeader): Iteratee[Array[Byte], Result] = {
+      
+      parser(rh) flatMap { parseResult =>
+        parseResult match {
+          case Left(r) => doneIteratee(r)
+          case Right(a) => {
+            val request = Request(rh, a)
+            block(request)
+          }
+        }        
+      }
+    }
+  }  
   
-  var onForbidden: (Refused, Request[AnyContent]) => SimpleResult[_] = { (refused, request) => Results.Forbidden("No forbidden action has been set") }
   
-  var onInternalServerError: (Throwable, Request[AnyContent]) => SimpleResult[_] = { (exc, request) =>  Results.InternalServerError("No 500 action has been set") }
+  var homeAction:EssentialAction = Action(Results.NotFound("No home action has been set"))
+  
+  var onNotFound:EssentialAction = Action(Results.NotFound("No 404 action has been set"))
+  
+  var onForbidden: Refused => EssentialAction = { (refused) => Action(Results.Forbidden("No forbidden action has been set")) }
+  
+  var onInternalServerError: Throwable => EssentialAction = { (exc) => Action(Results.InternalServerError("No 500 action has been set")) }
     
   
   /**
@@ -37,118 +208,6 @@ object DataAction extends AcceptExtractors {
     }
   }
   
-  /**
-   * An action returning a single item that can be converted into JSON for the requesting user
-   */
-  def one[T, U](block: => Ref[T])(implicit jc:JsonConverter[T, U], ufr:UserFromRequest[U]) = Action { implicit request =>
-	request match {
-      case Accepts.Html() => homeAction(request)
-      case Accepts.Json() => {
-        try {
-          val wrapped = new AppbaseRequest(request)
-          val res = for (item <- block; j <- jc.toJsonFor(item, wrapped.approval)) yield ensuringSessionKey(wrapped, Results.Ok(j))
-          refResultToResult(res)
-        } catch {
-          case exc:Throwable => refResultToResult(RefFailed(exc))
-        }
-      }
-    }    
-  }
-
-  /**
-   * An action returning a single item that can be converted into JSON for the requesting user
-   */
-  def one[T, U](block: (AppbaseRequest[AnyContent, U]) => Ref[T])(implicit jc:JsonConverter[T, U], ufr:UserFromRequest[U]) = Action { implicit request =>
-	request match {
-      case Accepts.Html() => homeAction(request)
-      case Accepts.Json() => {
-        try {
-          val wrapped = new AppbaseRequest(request)
-          val res = for (item <- block(wrapped); j <- jc.toJsonFor(item, wrapped.approval)) yield ensuringSessionKey(wrapped, Results.Ok(j))
-          refResultToResult(res)
-        } catch {
-          case exc:Throwable => refResultToResult(RefFailed(exc))
-        }
-      }
-    }     
-  }
-
-
-  /**
-   * An action returning a single item that can be converted into JSON for the requesting user
-   */
-  def one[T, U, A](bodyParser: BodyParser[A])(block: (Request[AnyContent]) => Ref[T])(implicit jc:JsonConverter[T, U], ufr:UserFromRequest[U]) = Action { implicit request =>
-	request match {
-      case Accepts.Html() => homeAction(request)
-      case Accepts.Json() => {
-        try {
-          val wrapped = new AppbaseRequest(request)
-          val res = for (item <- block(wrapped); j <- jc.toJsonFor(item, wrapped.approval)) yield ensuringSessionKey(wrapped, Results.Ok(j))
-          refResultToResult(res)
-        } catch {
-          case exc:Throwable => refResultToResult(RefFailed(exc))
-        }
-      }
-    }         
-  }
-  
-  
-  /**
-   * An action returning a many items that can be converted into JSON for the requesting user
-   */
-  def many[T, U](block: => RefMany[T])(implicit jc:JsonConverter[T, U], ufr:UserFromRequest[U]) = Action { implicit request =>
-	request match {
-      case Accepts.Html() => homeAction(request)
-      case Accepts.Json() => {
-        try {
-          val wrapped = new AppbaseRequest(request)
-          val j = for (item <- block; j <- jc.toJsonFor(item, wrapped.approval)) yield j          
-          val en = Enumerator("[") andThen j.enumerate.stringify andThen Enumerator("]") andThen Enumerator.eof[String]
-          ensuringSessionKey(wrapped, Results.Ok.stream(en).as("application/json"))                              
-        } catch {
-          case exc:Throwable => refResultToResult(RefFailed(exc))
-        }
-      }
-    }    
-  }  
-  
-  /**
-   * An action returning a many items that can be converted into JSON for the requesting user
-   */
-  def many[T, U](block: (AppbaseRequest[AnyContent, U]) => RefMany[T])(implicit jc:JsonConverter[T, U], ufr:UserFromRequest[U]) = Action { implicit request =>
-	request match {
-      case Accepts.Html() => homeAction(request)
-      case Accepts.Json() => {
-        try {
-          val wrapped = new AppbaseRequest(request)
-          val j = for (item <- block(wrapped); j <- jc.toJsonFor(item, wrapped.approval)) yield j          
-          val en = Enumerator("[") andThen j.enumerate.stringify andThen Enumerator("]") andThen Enumerator.eof[String]
-          ensuringSessionKey(wrapped, Results.Ok.stream(en).as("application/json"))                             
-        } catch {
-          case exc:Throwable => refResultToResult(RefFailed(exc))
-        }
-      }
-    }     
-  }  
-  
-  /**
-   * An action returning a many items that can be converted into JSON for the requesting user
-   */
-  def many[T, U, A](bodyParser: BodyParser[A])(block: (Request[AnyContent]) => RefMany[T])(implicit jc:JsonConverter[T, U], ufr:UserFromRequest[U]) = Action { implicit request =>
-	request match {
-      case Accepts.Html() => homeAction(request)
-      case Accepts.Json() => {
-        try {
-          val wrapped = new AppbaseRequest(request)
-          val j = for (item <- block(wrapped); j <- jc.toJsonFor(item, wrapped.approval)) yield j          
-          val en = Enumerator("[") andThen j.enumerate.stringify andThen Enumerator("]") andThen Enumerator.eof[String]
-          ensuringSessionKey(wrapped, Results.Ok.stream(en).as("application/json"))                            
-        } catch {
-          case exc:Throwable => refResultToResult(RefFailed(exc))
-        }
-      }
-    }         
-  }
   
   /**
    * Maps exceptions to HTTP error codes. For instance, you may wish to register your UserError exceptions as BadRequest
@@ -158,6 +217,53 @@ object DataAction extends AcceptExtractors {
   /**
    * Converts a Ref[Result] to an asychronous result
    */
+  implicit def refEE(r:Ref[Iteratee[Array[Byte], Result]])(implicit request:RequestHeader):Iteratee[Array[Byte], Result] = { 
+      import scala.concurrent._
+      
+      val p = promise[Iteratee[Array[Byte], Result]]
+      r onComplete(
+        onSuccess = p success _,
+        onNone = p success {
+          request match {
+            case Accepts.Html() => onNotFound(request)
+            case Accepts.Json() => Action(Results.NotFound(Json.obj("error" -> "not found")))(request)
+            case _ => Action(Results.NotFound)(request)
+          }
+        },
+        onFail = _ match {
+          case Refused(msg) => p success {
+            request match {
+              case Accepts.Html() => onForbidden(Refused(msg))(request)
+              case Accepts.Json() => Action(Results.Forbidden(Json.obj("error" -> msg)))(request)
+              case _ => Action(Results.Forbidden(msg))(request)
+            }            
+          }
+          case exc:Throwable if errorCodeMap.contains(exc.getClass()) => p success {
+            request match {
+              case Accepts.Json() => Action(Results.Status(errorCodeMap(exc.getClass))(Json.obj("error" -> exc.getMessage())))(request)
+              case _ => Action(Results.Status(errorCodeMap(exc.getClass))("User error in non-JSON request: " + exc.getMessage()))(request)
+            }            
+          }
+          case exc:Throwable => p success {
+            
+            exc.printStackTrace()
+            
+            request match {
+              case Accepts.Html() => onInternalServerError(exc)(request)
+              case Accepts.Json() => Action(Results.InternalServerError(Json.obj("error" -> exc.getMessage)))(request)
+              case _ => Action(Results.InternalServerError(exc.getMessage))(request)
+            }                        
+          }
+        }
+      )
+      Iteratee.flatten(p.future)
+    
+  }
+  
+  
+  /**
+   * Converts a Ref[Result] to an asychronous result
+   *
   implicit def refResultToResult(r:Ref[Result])(implicit request:Request[AnyContent]) = {
     Results.Async {
       import scala.concurrent._
@@ -200,6 +306,8 @@ object DataAction extends AcceptExtractors {
       )
       p.future
     }
-  }  
+  }  */
+  
+  
   
 }
