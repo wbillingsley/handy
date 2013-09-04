@@ -6,9 +6,9 @@ import com.wbillingsley.handy.Approval
 
 class AppbaseRequest[A, U](request:Request[A])(implicit ufr:UserFromRequest[U]) extends WrappedRequest(request) {
 
-  val user = ufr.user(request)
+  lazy val user = ufr.user(request)
   
-  val approval = new Approval(user)
+  lazy val approval = new Approval(user)
   
   val sessionKey = request.session.get("sessionKey").getOrElse(AppbaseRequest.newSessionKey)
 }
