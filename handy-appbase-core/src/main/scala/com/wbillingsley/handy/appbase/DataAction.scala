@@ -16,6 +16,34 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) extends AcceptExtracto
 
   import DataAction._
   
+  
+  /**
+   * An action returning a single item that can be converted into JSON for the requesting user
+   */
+  def result(block: AppbaseRequest[AnyContent, U] => Ref[Result]) = EssentialAction { implicit request =>
+    try {
+      val ba = new BodyAction(BodyParsers.parse.anyContent)({ implicit request => 
+        val wrapped = new AppbaseRequest(request)
+        val res = for (item <- block(wrapped)) yield ensuringSessionKey(wrapped, item)
+        val it = for (r <- res) yield doneIteratee(r)
+        
+        println("it is " + it)
+        
+        refEE(it)
+      })
+      println("ba is " + ba)
+      val res = ba.apply(request)
+      println("res is " + res)
+      res
+    } catch {
+      case exc:Throwable => {
+        println("exc is " + exc)
+        refEE(RefFailed(exc))
+      }
+    }
+  }  
+    
+  
   /**
    * An action returning a single item that can be converted into JSON for the requesting user
    */
