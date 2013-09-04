@@ -10,7 +10,7 @@ class AppbaseRequest[A, U](request:Request[A])(implicit ufr:UserFromRequest[U]) 
   
   val approval = new Approval(user)
   
-  val sessionKey = request.session.get("sessionkey").getOrElse(AppbaseRequest.newSessionKey)
+  val sessionKey = request.session.get("sessionKey").getOrElse(AppbaseRequest.newSessionKey)
 }
 
 object AppbaseRequest {

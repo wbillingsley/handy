@@ -204,7 +204,7 @@ object DataAction extends AcceptExtractors {
     if (wrapped.session.get("sessionKey") == Some(wrapped.sessionKey)) {
       result
     } else {
-      result.withSession(wrapped.session + "sessionKey" -> wrapped.sessionKey)
+      result.withSession(wrapped.session + ("sessionKey" -> wrapped.sessionKey))
     }
   }
   
