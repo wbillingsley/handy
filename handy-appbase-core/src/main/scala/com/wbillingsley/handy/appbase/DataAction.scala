@@ -16,9 +16,8 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) extends AcceptExtracto
 
   import DataAction._
   
-  
   /**
-   * An action returning a single item that can be converted into JSON for the requesting user
+   * An action returning a Result
    */
   def result(block: AppbaseRequest[AnyContent, U] => Ref[Result]) = EssentialAction { implicit request =>
     try {
@@ -26,23 +25,49 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) extends AcceptExtracto
         val wrapped = new AppbaseRequest(request)
         val res = for (item <- block(wrapped)) yield ensuringSessionKey(wrapped, item)
         val it = for (r <- res) yield doneIteratee(r)
-        
-        println("it is " + it)
-        
         refEE(it)
       })
-      println("ba is " + ba)
+      ba.apply(request)
+    } catch {
+      case exc:Throwable => refEE(RefFailed(exc))
+    }
+  }
+    
+  /**
+   * An action returning a Result
+   */
+  def result(block: => Ref[Result]) = EssentialAction { implicit request =>
+    try {
+      val ba = new BodyAction(BodyParsers.parse.anyContent)({ implicit request => 
+        val wrapped = new AppbaseRequest(request)
+        val res = for (item <- block) yield ensuringSessionKey(wrapped, item)
+        val it = for (r <- res) yield doneIteratee(r)
+        refEE(it)
+      })
       val res = ba.apply(request)
-      println("res is " + res)
       res
     } catch {
-      case exc:Throwable => {
-        println("exc is " + exc)
-        refEE(RefFailed(exc))
-      }
+      case exc:Throwable => refEE(RefFailed(exc))
+    }
+  }
+  
+  /**
+   * An action returning a Result
+   */
+  def result[A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => Ref[Result]) = EssentialAction { implicit request =>
+    try {
+      val ba = new BodyAction(bodyParser)({ implicit request => 
+        val wrapped = new AppbaseRequest(request)
+        val res = for (item <- block(wrapped)) yield ensuringSessionKey(wrapped, item)
+        val it = for (r <- res) yield doneIteratee(r)
+        refEE(it)
+      })
+      ba.apply(request)
+    } catch {
+      case exc:Throwable => refEE(RefFailed(exc))
     }
   }  
-    
+  
   
   /**
    * An action returning a single item that can be converted into JSON for the requesting user
@@ -185,6 +210,9 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) extends AcceptExtracto
 
 object DataAction extends AcceptExtractors {
   
+  // Allows syntactic sugar of "DataAction returning one"
+  def returning[U](implicit ufr:UserFromRequest[U]) = DataAction()(ufr)
+  
   def doneIteratee[A](res:Result) = Done[Array[Byte], Result](res, Input.Empty)     
     
   
@@ -207,8 +235,7 @@ object DataAction extends AcceptExtractors {
         }        
       }
     }
-  }  
-  
+  }
   
   var homeAction:EssentialAction = Action(Results.NotFound("No home action has been set"))
   
@@ -287,55 +314,5 @@ object DataAction extends AcceptExtractors {
       Iteratee.flatten(p.future)
     
   }
-  
-  
-  /**
-   * Converts a Ref[Result] to an asychronous result
-   *
-  implicit def refResultToResult(r:Ref[Result])(implicit request:Request[AnyContent]) = {
-    Results.Async {
-      import scala.concurrent._
-      
-      val p = promise[Result]
-      r onComplete(
-        onSuccess = p success _,
-        onNone = p success {
-          request match {
-            case Accepts.Html() => onNotFound(request)
-            case Accepts.Json() => Results.NotFound(Json.obj("error" -> "not found"))
-            case _ => Results.NotFound
-          }
-        },
-        onFail = _ match {
-          case Refused(msg) => p success {
-            request match {
-              case Accepts.Html() => onForbidden(Refused(msg), request)
-              case Accepts.Json() => Results.Forbidden(Json.obj("error" -> msg))
-              case _ => Results.Forbidden(msg)
-            }            
-          }
-          case exc:Throwable if errorCodeMap.contains(exc.getClass()) => p success {
-            request match {
-              case Accepts.Json() => Results.Status(errorCodeMap(exc.getClass))(Json.obj("error" -> exc.getMessage()))
-              case _ => Results.Status(errorCodeMap(exc.getClass))("User error in non-JSON request: " + exc.getMessage())
-            }            
-          }
-          case exc:Throwable => p success {
-            
-            exc.printStackTrace()
-            
-            request match {
-              case Accepts.Html() => onInternalServerError(exc, request)
-              case Accepts.Json() => Results.InternalServerError(Json.obj("error" -> exc.getMessage))
-              case _ => Results.InternalServerError(exc.getMessage)
-            }                        
-          }
-        }
-      )
-      p.future
-    }
-  }  */
-  
-  
   
 }
