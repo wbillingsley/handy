@@ -421,11 +421,6 @@ object DataAction extends AcceptExtractors {
             }            
           }
           case exc:Throwable => p success {
-            
-            println("Exception dealt with by refEE")
-            println(request.accept)
-            exc.printStackTrace()
-            
             request match {
               case Accepts.Html() => onInternalServerError(exc)(request)
               case Accepts.Json() => doneIteratee(Results.InternalServerError(Json.obj("error" -> exc.getMessage)))
