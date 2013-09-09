@@ -2,7 +2,7 @@ name := "handy"
 
 organization in ThisBuild := "com.wbillingsley"
 
-version in ThisBuild := "0.4-SNAPSHOT"
+version in ThisBuild := "0.4"
 
 scalaVersion in ThisBuild := "2.10.2"
 
