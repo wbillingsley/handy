@@ -108,6 +108,20 @@ object Ref {
 	def toRef = new RefFuture(underlying)  
   }  
   
+  implicit class optToRef[T](val underlying: Option[T]) extends AnyVal {
+	def toRef = fromOptionItem(underlying) 
+  } 
+
+  implicit class tryToRef[T](val underlying: scala.util.Try[T]) extends AnyVal {
+    import scala.util.{Success, Failure}
+    
+    def toRef = underlying match {
+      case Success(item) => item.itself
+      case Failure(f) => RefFailed(f)
+    }
+  } 
+  
+  
   /**
    * flattens a RefMany[A[B]] by flatMaping itself to its contents
    */
