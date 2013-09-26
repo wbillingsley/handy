@@ -18,11 +18,11 @@ If you have a `Ref[T]`, then you can say `ref.map(...)` or `ref.flatMap(...)` to
 
 Scala has some syntactic sugar that means you can also write
 
-    for (
+    for {
     	item <- ref;
-    	other <- doSomethingWith(item);
+    	other <- doSomethingWith(item)
     	yetAnother <- doSomethingElseWith(yetAnother)
-    ) yield yetAnother
+    } yield yetAnother
 
 and you'll end up with a `Ref[yetAnother]`.
 
@@ -69,24 +69,61 @@ I've defined Ref around the sorts of things we need for a typical web app. (Larg
 
 ### Referring to things by an ID
 
+    val myFoo = LazyId(classOf[Foo], "5242a9ed790e43b81c39b566")
 
+    val idOpt = myRef.getId
+
+#### Canonicalising IDs
+    
+Just *having* an ID isn't the end of the story. At some point, you'll find you're referring to your ID in a different format. For instance, if you use MongoDB, your IDs are probably ObjectIDs.  But a GET request to your server will have that ID as a String.
+
+And sometimes your ID isn't in a variable called `id`. For example, if you're using MongoDB it may be in `_id`.
+
+For these reason, `Ref.getId` takes an implicit parameter of type `GetsId`.  This knows how to extract an ID from an item, and how to canonicalise an item.  This lets you define ID formats and how they should be converted in one place.
+
+The trait `HasStringId` and its implicit object `GetsStringId` are provided, so if you're using strings as your ID format, just have your data types inherit from `HasStringId`.
+
+#### Setting up how data should be looked up
+
+You'll need to tell handy how to look up your references.  You do this by setting `RefById.lookupMethod` and `RefManyById.lookupMethod`.  The code for these is going to depend on how you do your data storage.  But note that you can freely keep different classes in wildly different kinds of data storage (eg, users are in this SQL database over here, while documents are in that asynchronous MongoDB store over there) and the `Ref` code will still fit together neatly.
+
+#### Referring to something
+
+I recommend using `LazyId` for looking up items. The reason for this is that `LazyId` keeps both the original ID (it retains a `RefById`) and the item that was resolved (whatever `lookUp` returned).  
+
+Why is that important?  Well, if you're working asynchronously, then your lookup method is going to return a `Future` (wrapped as a `RefFuture`). That means you still don't have the item until some point in the future.  If you need to get the ID back out again, for another step in your algorithm, it's handy not to have to wait for the future to complete.  And if you ask for the item from the `LazyId` the second time, it will give you the `RefFuture` it obtained the first time rather than trying to look it up again.  So, you can just pass the `LazyId` around knowing that both requests for its ID and requests for the item itself are going to work well.
 
 ### Things being asynchronous
 
+    val futureFoo:Future[Foo] = takesALongTime
+
+    val refFoo = futureFoo.toRef
+
+If you're doing asynchronous work, then you'll probably find that at the end of your algorithm, you have a `RefFuture` or a
+`RefFutureRef`.  But they're still `Ref`s.
 
 
-### Things being missing, and stuff failing
+### Things being missing
 
+    val someFoo = Some("foo")
+
+    val refFoo = someFoo.toRef
+
+### stuff failing
+
+    val tryFoo = Try { thisMightThrowAnException }
+
+    val refFoo = tryFoo.toRef
 
 
 ### One of something and many of something -- plurality
 
 If you have a `Ref[T]`, it refers to precisely one thing.  The plural is `RefMany[T]`.  Going between singles and plurals is remarkably easy.
 
-    for (
-      item <- ref;
+    for {
+      item <- ref
       thing <- item.getLotsOfThings
-    ) yield thing
+    } yield thing
 
 You now have a `RefMany[thing]`.
 
