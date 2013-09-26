@@ -1,11 +1,13 @@
 package com.wbillingsley.handy
 
+import scala.collection.concurrent.TrieMap
+
 /**
  * A mutable cache for Refs
  */
 class LookUpCache {
   
-  val cache = scala.collection.mutable.Map.empty[Any, List[(Class[_], Ref[_])]]
+  val cache = TrieMap.empty[Any, List[(Class[_], Ref[_])]]
   
   def cacheLookup[T, K, KK](rbi: RefById[T, K])(implicit g: GetsId[T, KK]):Ref[T] = {    
     rbi.getId match {
@@ -24,9 +26,8 @@ class LookUpCache {
     li.getId match {
       case Some(id) => { 
         find(li.rbi.clazz, id).getOrElse({
-          val l = li.lookUp
-          remember(li.rbi.clazz, l)
-          l 
+          remember(li.rbi.clazz, li)
+          li
         })
       }
       case None => li
@@ -35,13 +36,8 @@ class LookUpCache {
   
   private def find[T](clazz:Class[T], id:Any):Option[Ref[T]] = {    
     val list = cache.getOrElse(id, Nil)        
-    for (
-      (storedClazz, ref) <- list.find {
-      	case (storedClazz, ref) => {
-      	  clazz isAssignableFrom storedClazz
-      	}
-      }
-    ) yield ref.asInstanceOf[Ref[T]]
+    val tup = list.find { clazz isAssignableFrom _._1 }
+    tup map { _._2.asInstanceOf[Ref[T]] }
   }  
   
   def remember[T, KK](clazz: Class[_], r:Ref[T])(implicit g: GetsId[T, KK]) = {

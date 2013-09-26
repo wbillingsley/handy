@@ -24,8 +24,9 @@ class PermissionSpec extends Specification {
       
       val cache = new LookUpCache      
       
-      val rp1 = cache(RefById(classOf[Page], 1))      
-      cache(RefById(classOf[Page], 1)) must be_===(rp1)       
+            
+      val a = for (p <- cache(new LazyId(classOf[Page], 1))) yield p.id
+      a.toFuture must be_==(Some(1)).await
     }    
       
     "find assignable items in the cache" in {
