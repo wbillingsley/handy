@@ -9,8 +9,8 @@ class LazyId [T, K](clazz : scala.Predef.Class[T], id: K) extends Ref[T] {
   
   lazy val lookUp = rbi.lookUp
   
-  override def getId[TT >: T, KK](implicit g:GetsId[TT, KK]) = {
-	g.canonical(id)
+  def getId[TT >: T, KK](implicit g:GetsId[TT, KK]) = {
+    rbi.getId(g)
   }  
   
   def fetch = lookUp.fetch

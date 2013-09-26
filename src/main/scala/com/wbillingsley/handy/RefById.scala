@@ -10,7 +10,7 @@ import scala.language.higherKinds
  */
 case class RefById[T, K](clazz : scala.Predef.Class[T], id: K) extends Ref[T] with UnresolvedRef[T] {
     
-  override def getId[TT >: T, KK](implicit g:GetsId[TT, KK]) = {
+  def getId[TT >: T, KK](implicit g:GetsId[TT, KK]) = {
 	g.canonical(id)
   }  
 
