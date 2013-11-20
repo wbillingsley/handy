@@ -1,3 +1,3 @@
-libraryDependencies += "org.reactivemongo" %% "reactivemongo" % "0.9"
+libraryDependencies += "org.reactivemongo" %% "reactivemongo" % "0.10.0-SNAPSHOT"
 
-libraryDependencies += "org.reactivemongo" %% "play2-reactivemongo" % "0.9"
+resolvers += Resolver.sonatypeRepo("snapshots")

@@ -29,6 +29,8 @@ object RefConversions {
     def enumerate = {
       new Enumerator[T] {
         def apply[A](it: Iteratee[T, A]) = {
+          
+          import RefFuture.executionContext
 
           r match {
             case RefItself(item) => {

@@ -18,6 +18,12 @@ trait JsonConverter[T, U] {
   
 object JsonConverter {
   
+  /*
+   * We're using this onthe grounds that it is variable, and that if you're in the Play environment you'll
+   * probably be pointing it at the threadpool where you want your work to be done anyway
+   */  
+  import RefFuture.executionContext
+  
   /**
    * Converts a single item to JSON
    */

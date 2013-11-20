@@ -60,6 +60,7 @@ object EnumeratorHelper {
       val complete = e |>>> checker
 
       assert(Await.result(complete, 1.seconds), "Didn't match expectation")
+      true
     }
     
   }

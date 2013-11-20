@@ -11,6 +11,8 @@ import scala.concurrent.Future
  */
 class RefEnumerator[T](val enumerator:Enumerator[T]) extends RefMany[T] {
   
+  import RefFuture.executionContext
+  
   /** 
    * If you're using a non-blocking framework, you probably don't want to call this one!
    */

@@ -1,7 +1,7 @@
 package com.wbillingsley.handy.reactivemongo
 
 import reactivemongo.api._
-import reactivemongo.core.actors.Authenticate
+import reactivemongo.core.nodeset.Authenticate
 import reactivemongo.bson._
 
 import indexes.{Index, IndexType}

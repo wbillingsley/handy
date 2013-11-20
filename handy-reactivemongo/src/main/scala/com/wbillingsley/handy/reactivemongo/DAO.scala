@@ -7,9 +7,10 @@ import reactivemongo.core.commands.GetLastError
 import com.wbillingsley.handy._
 import com.wbillingsley.handyplay._
 import Ref._
-import play.api.libs.concurrent.Execution.Implicits._
 
 trait DAO[T <: HasStringId] {
+  
+  import RefFuture.executionContext
   
   /**
    * Partial function for looking up RefById to this class
@@ -172,7 +173,7 @@ trait DAO[T <: HasStringId] {
   }
   
   def findMany(query:BSONDocument):RefMany[T] = {
-    new RefEnumIter(coll.find(query).cursor[T].enumerateBulks)
+    new RefEnumIter(coll.find(query).cursor[T].enumerateBulks(maxDocs=Int.MaxValue, stopOnError=true))
   }
   
   def findOne(query:BSONDocument):Ref[T] = {

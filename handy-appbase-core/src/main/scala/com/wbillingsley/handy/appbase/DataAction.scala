@@ -1,6 +1,6 @@
 package com.wbillingsley.handy.appbase
 
-import play.api.mvc.{Request, RequestHeader, AnyContent, AcceptExtractors, BodyParser, BodyParsers, Action, SimpleResult, Result, Results}
+import play.api.mvc.{Request, RequestHeader, AnyContent, AcceptExtractors, BodyParser, BodyParsers, Action, SimpleResult, Results}
 import play.api.libs.json.Json
 import play.api.libs.iteratee.Enumerator
 import com.wbillingsley.handy._
@@ -20,7 +20,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
   /**
    * An action returning a Result
    */
-  def result(block: AppbaseRequest[AnyContent, U] => Ref[Result]) = EssentialAction { implicit request =>
+  def result(block: AppbaseRequest[AnyContent, U] => Ref[SimpleResult]) = EssentialAction { implicit request =>
     try {
       val ba = new BodyAction(BodyParsers.parse.anyContent)({ implicit request => 
         val wrapped = new AppbaseRequest(request)
@@ -37,7 +37,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
   /**
    * An action returning a Result
    */
-  def result(block: => Ref[Result]) = EssentialAction { implicit request =>
+  def result(block: => Ref[SimpleResult]) = EssentialAction { implicit request =>
     try {
       val ba = new BodyAction(BodyParsers.parse.anyContent)({ implicit request => 
         val wrapped = new AppbaseRequest(request)
@@ -55,7 +55,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
   /**
    * An action returning a Result
    */
-  def result[A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => Ref[Result]) = EssentialAction { implicit request =>
+  def result[A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => Ref[SimpleResult]) = EssentialAction { implicit request =>
     try {
       val ba = new BodyAction(bodyParser)({ implicit request => 
         val wrapped = new AppbaseRequest(request)
@@ -203,7 +203,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
             val wrapped = new AppbaseRequest(request)
             val j = for (item <- block; j <- jc.toJsonFor(item, wrapped.approval)) yield j          
             val en = Enumerator("[") andThen j.enumerate.stringify andThen Enumerator("]") andThen Enumerator.eof[String]
-            val r = ensuringSessionKey(wrapped, Results.Ok.stream(en).as("application/json"))
+            val r = ensuringSessionKey(wrapped, Results.Ok.chunked(en).as("application/json"))
             doneIteratee(r)
           })
           ba.apply(request) 
@@ -226,7 +226,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
             val wrapped = new AppbaseRequest(request)
             val j = for (item <- block(wrapped); j <- jc.toJsonFor(item, wrapped.approval)) yield j          
             val en = Enumerator("[") andThen j.enumerate.stringify andThen Enumerator("]") andThen Enumerator.eof[String]
-            val r = ensuringSessionKey(wrapped, Results.Ok.stream(en).as("application/json"))
+            val r = ensuringSessionKey(wrapped, Results.Ok.chunked(en).as("application/json"))
             doneIteratee(r)
           })
           ba.apply(request) 
@@ -249,7 +249,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
             val wrapped = new AppbaseRequest(request)
             val j = for (item <- block(wrapped); j <- jc.toJsonFor(item, wrapped.approval)) yield j          
             val en = Enumerator("[") andThen j.enumerate.stringify andThen Enumerator("]") andThen Enumerator.eof[String]
-            ensuringSessionKey(wrapped, Results.Ok.stream(en).as("application/json"))
+            ensuringSessionKey(wrapped, Results.Ok.chunked(en).as("application/json"))
           }
           action(request)
         } catch {
@@ -271,7 +271,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
             val wrapped = new AppbaseRequest(request)
             val j = block
             val en = Enumerator("[") andThen j.enumerate.stringify andThen Enumerator("]") andThen Enumerator.eof[String]
-            val r = ensuringSessionKey(wrapped, Results.Ok.stream(en).as("application/json"))
+            val r = ensuringSessionKey(wrapped, Results.Ok.chunked(en).as("application/json"))
             doneIteratee(r)
           })
           ba.apply(request) 
@@ -294,7 +294,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
             val wrapped = new AppbaseRequest(request)
             val j = block(wrapped)           
             val en = Enumerator("[") andThen j.enumerate.stringify andThen Enumerator("]") andThen Enumerator.eof[String]
-            val r = ensuringSessionKey(wrapped, Results.Ok.stream(en).as("application/json"))
+            val r = ensuringSessionKey(wrapped, Results.Ok.chunked(en).as("application/json"))
             doneIteratee(r)
           })
           ba.apply(request) 
@@ -317,7 +317,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
             val wrapped = new AppbaseRequest(request)
             val j = block(wrapped)           
             val en = Enumerator("[") andThen j.enumerate.stringify andThen Enumerator("]") andThen Enumerator.eof[String]
-            ensuringSessionKey(wrapped, Results.Ok.stream(en).as("application/json"))
+            ensuringSessionKey(wrapped, Results.Ok.chunked(en).as("application/json"))
           }
           action(request)
         } catch {
@@ -331,20 +331,22 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
 
 object DataAction extends AcceptExtractors {
   
+  import RefFuture.executionContext
+  
   // Allows syntactic sugar of "DataAction returning one"
   def returning[U](implicit ufr:UserFromRequest[U]) = DataAction()(ufr)
   
-  def doneIteratee[A](res:Result) = Done[Array[Byte], Result](res, Input.Empty)     
+  def doneIteratee[A](res:SimpleResult) = Done[Array[Byte], SimpleResult](res, Input.Empty)     
     
   
   /**
    * Solves an annoying issue with EssentialAction and Action not playing nicely together
    * (You can't get back from a Request[B] to a Request[AnyContent])
    */
-  class BodyAction[A](parser:BodyParser[A])(block: Request[A] => Iteratee[Array[Byte], Result]) {
+  class BodyAction[A](parser:BodyParser[A])(block: Request[A] => Iteratee[Array[Byte], SimpleResult]) {
     
     
-	def apply(rh: RequestHeader): Iteratee[Array[Byte], Result] = {
+	def apply(rh: RequestHeader): Iteratee[Array[Byte], SimpleResult] = {
       
       parser(rh) flatMap { parseResult =>
         parseResult match {
@@ -371,12 +373,13 @@ object DataAction extends AcceptExtractors {
    * Ensures that the session key is set after this response. 
    * This might however prevent other session variables set in the contained action from sticking
    */
-  def forceSession[A](a:Action[A])(implicit ufr:UserFromRequest[_]) = Action(a.parser) { implicit request =>
+  def forceSession[A](a:Action[A])(implicit ufr:UserFromRequest[_]) = Action.async(a.parser) { implicit request =>
     val wrapped = new AppbaseRequest(request)
-    ensuringSessionKey(wrapped, a(request))
+    val fresult = a(request)
+    for (r <- fresult) yield ensuringSessionKey(wrapped, r)
   }
   
-  protected def ensuringSessionKey(wrapped:AppbaseRequest[_, _], result:Result) = {
+  protected def ensuringSessionKey(wrapped:AppbaseRequest[_, _], result:SimpleResult) = {
     if (wrapped.session.get("sessionKey") == Some(wrapped.sessionKey)) {
       result
     } else {
@@ -393,10 +396,10 @@ object DataAction extends AcceptExtractors {
   /**
    * Converts a Ref[Result] to an asychronous result
    */
-  implicit def refEE(r:Ref[Iteratee[Array[Byte], Result]])(implicit request:RequestHeader):Iteratee[Array[Byte], Result] = { 
+  implicit def refEE(r:Ref[Iteratee[Array[Byte], SimpleResult]])(implicit request:RequestHeader):Iteratee[Array[Byte], SimpleResult] = { 
       import scala.concurrent._
       
-      val p = promise[Iteratee[Array[Byte], Result]]
+      val p = promise[Iteratee[Array[Byte], SimpleResult]]
       r onComplete(
         onSuccess = p success _,
         onNone = p success {

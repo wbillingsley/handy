@@ -11,6 +11,8 @@ import scala.concurrent.Future
  */
 class RefEnumIter[T](val enumerator:Enumerator[Iterator[T]]) extends RefMany[T] {
   
+  import RefFuture.executionContext
+  
   private def enumerateIterator(iterator:Iterator[T]) = {        
     Enumerator.generateM({
       if (iterator.hasNext) {
