@@ -70,6 +70,19 @@ trait DAO[T <: HasStringId] {
       }
     }
   }
+  
+  /**
+   * Implicit conversion that allows RefMany[_] to be written as BSON
+   */
+  implicit def RefManyByIdWriter[T <: HasStringId] = new BSONWriter[RefManyById[T, String], BSONValue] {
+    def write(r:RefManyById[T, String]) = {
+      if (db.useBSONIds) {
+        BSONArray(r.rawIds.map(new BSONObjectID(_)))
+      } else {
+        BSONArray(r.rawIds.map(BSONString(_)))
+      }
+    }
+  }  
 
   /**
    * A test on whether _id matches. Depending on db.useBSONObjectIds, this
@@ -175,6 +188,11 @@ trait DAO[T <: HasStringId] {
   def findMany(query:BSONDocument):RefMany[T] = {
     new RefEnumIter(coll.find(query).cursor[T].enumerateBulks(maxDocs=Int.MaxValue, stopOnError=true))
   }
+
+  def findSorted(query:BSONDocument, sort:BSONDocument):RefMany[T] = {
+    new RefEnumIter(coll.find(query).sort(sort).cursor[T].enumerateBulks(maxDocs=Int.MaxValue, stopOnError=true))
+  }
+
   
   def findOne(query:BSONDocument):Ref[T] = {
     new RefFutureOption(coll.find(query).one[T])    
