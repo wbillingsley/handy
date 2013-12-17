@@ -1,11 +1,11 @@
 package com.wbillingsley.handyplay
-import play.api.libs.iteratee.{Iteratee, Enumerator, Step, Input}
+import play.api.libs.iteratee.{Iteratee, Enumerator, Enumeratee, Step, Input}
 import scala.concurrent._
 import scala.concurrent.duration._
 
 object EnumeratorHelper {
-
-  def iterChecker[E](checks:List[(E) => Boolean]):Iteratee[E, Boolean] = {
+  
+  def iterChecker[E](checks:(E) => Boolean*):Iteratee[E, Boolean] = {
      
      //println("Cont")
      Step.Cont[E, Boolean]( inp => {
@@ -18,7 +18,7 @@ object EnumeratorHelper {
              Step.Error("Element received after checks exhausted: " + el, Input.El(el)).it
            } else {
              if (checks.head(el)) {
-               iterChecker(checks.tail)
+               iterChecker(checks.tail:_*)
              } else {
                //println("Error")
                Step.Error("Element failed check: " + el, Input.El(el)).it
@@ -49,19 +49,12 @@ object EnumeratorHelper {
 
     def expect(list: List[A]) = {
       var l = list.map(item => (i:A) => i == item)
-      verify(l)
+      verify(l:_*)
     }
     
-    def verify(list: List[(A) => Boolean]) = {
-      var l = list
-      var overflowed = false
-
-      val checker = iterChecker(list)
-      val complete = e |>>> checker
-
-      assert(Await.result(complete, 1.seconds), "Didn't match expectation")
-      true
+    def verify(checks: (A) => Boolean*) = {
+      val checker = iterChecker(checks:_*)
+      e |>>> checker
     }
-    
   }
 }

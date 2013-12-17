@@ -38,15 +38,13 @@ class RefEnumerator[T](val enumerator:Enumerator[T]) extends RefMany[T] {
     
   def flatMapOne[B](f: T => Ref[B]) = {   
     import RefConversions._
-    
-    val enum2 = enumerator &> Enumeratee.mapFlatten(el => f(el).enumerate)
+    val enum2 = enumerator.flatMap(f(_).enumerate)
     new RefEnumerator(enum2)
   }
   
   def flatMapMany[B](f: T => RefMany[B]) = {   
     import RefConversions._
-    
-    val enum2 = enumerator &> Enumeratee.mapFlatten(el => f(el).enumerate)
+    val enum2 = enumerator.flatMap(f(_).enumerate)
     new RefEnumerator(enum2)
   }  
   

@@ -8,19 +8,20 @@ object RefConversions {
 
   implicit class EnumerateRefMany[T](val rm: RefMany[T]) {
 
-    def enumerate = new Enumerator[T] {
-
-      def apply[A](it: Iteratee[T, A]) = {
-        
-        val res = rm.fold(it)((it, el) => Iteratee.flatten(it.feed(Input.El(el))))
-        val p = scala.concurrent.promise[Iteratee[T, A]]
-        for (r <- res) p.success(r)
-        p.future
-        
+    def enumerate:Enumerator[T] = rm match {
+      case re:RefEnumerator[T] => re.enumerator
+      case rei:RefEnumIter[T] => {
+        implicit val ec = RefFuture.executionContext
+        rei.enumerator.flatMap(trav => Enumerator.enumerate(trav))
       }
-      
+      case _ => new Enumerator[T] {
+        def apply[A](it: Iteratee[T, A]) = {
+          import com.wbillingsley.handy.Ref._
+          val res = rm.fold(it) { (it, el) => Iteratee.flatten(it.feed(Input.El(el))) }
+          res.toFuture.map(_.getOrElse(it))(RefFuture.executionContext)
+        }
+      }
     }
-
   }
   
   
