@@ -1,6 +1,6 @@
 package com.wbillingsley.handy.appbase
 
-import play.api.mvc.Request
+import play.api.mvc.RequestHeader
 import com.wbillingsley.handy.Ref
 
 /**
@@ -8,6 +8,6 @@ import com.wbillingsley.handy.Ref
  */
 trait UserFromRequest[U] {
   
-  def user(request:Request[_]):Ref[U]
+  def user(request:RequestHeader):Ref[U]
 
 }
