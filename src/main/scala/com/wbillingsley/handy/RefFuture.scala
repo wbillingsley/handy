@@ -42,7 +42,12 @@ class RefFuture[+T](val future: Future[T], implicit val executionContext:Executi
   }   
   
   override def orIfNone[B >: T](f: => Ref[B]) = {
-     val fut = future map { RefItself(_) } recover { case _ => f }
+     val fut = future map { RefItself(_) } recover { case n:NoSuchElementException => f }
+     new RefFutureRef(fut)
+  }
+  
+  override def recoverWith[B >: T](pf: PartialFunction[Throwable, Ref[B]]) = {
+     val fut = future map { RefItself(_) } recover pf
      new RefFutureRef(fut)
   }
     
@@ -80,10 +85,6 @@ class RefFuture[+T](val future: Future[T], implicit val executionContext:Executi
   
   def seq = fetch.seq
   
-  def toTraversable = fetch.toTraversable   
-  
-  def isEmpty = fetch.isEmpty    
-  
   def withFilter(p: T => Boolean) = new RefFuture(future.filter(p))
   
 }
@@ -112,9 +113,18 @@ class RefFutureRef[+T](val futureRef: Future[Ref[T]], implicit val executionCont
   
   override def orIfNone[B >: T](f: => Ref[B]) = {
     new RefFutureRef({
-    	val a = futureRef.map{ _ orIfNone f }     	
-    	val b = a recover { case _ => f }
-    	b
+      val a = futureRef.map{ _ orIfNone f }     	
+      val b = a recover { case n:NoSuchElementException => f }
+      b
+    })    
+  }
+
+  
+  override def recoverWith[B >: T](pf: PartialFunction[Throwable, Ref[B]]) = {
+    new RefFutureRef({
+      val a = futureRef.map{ _ recoverWith pf }     	
+      val b = a recover pf
+      b
     })    
   }
   
@@ -171,16 +181,15 @@ class RefFutureRefMany[+T](val futureRef: Future[RefMany[T]], implicit val execu
   def withFilter(p: T => Boolean) = new RefFutureRefMany(futureRef.map(_.withFilter(p)))
 
   def fold[B](initial: =>B)(each:(B, T) => B) = new RefFutureRef(futureRef.map(_.fold(initial)(each)))
+
+  def whenReady[B](block: RefMany[T] => B) = new RefFutureRef(futureRef.map(_.whenReady(block)))
   
-  override def onReady[U](onSuccess: RefMany[T] => U, onNone: => U, onFail: Throwable => U) {
-    futureRef onSuccess { case r:RefMany[T] => r onReady(onSuccess, onNone, onFail) }
-    futureRef onFailure {
-      case n:NoSuchElementException => onNone
-      case f => onFail(f) 
-    }
-  
+  override def recoverManyWith[B >: T](pf: PartialFunction[Throwable, RefMany[B]]) = {
+    val a = futureRef.map{ (_ recoverManyWith pf) }     	
+    val b = a recover pf
+    new RefFutureRefMany(b)
   }
-  
+
   def first = new RefFutureRef(futureRef.map(_.first))
 
   override def toRefOne = new RefFutureRef(futureRef.map(_.toRefOne))
@@ -218,7 +227,12 @@ class RefFutureOption[+T](val future: Future[Option[T]], implicit val executionC
   }   
   
   override def orIfNone[B >: T](f: => Ref[B]) = {
-     val fut = future map { Ref(_) orIfNone f } recover { case _ => f }
+     val fut = future map { Ref(_) orIfNone f }
+     new RefFutureRef(fut)
+  }
+  
+  override def recoverWith[B >: T](pf: PartialFunction[Throwable, Ref[B]]) = {
+     val fut = future map { Ref(_) } recover pf
      new RefFutureRef(fut)
   }
     

@@ -65,6 +65,14 @@ case class RefFailed(exception: Throwable) extends RefNothing {
   
   def fold[B](initial: =>B)(each: (B, Nothing) => B) = this
   
+  def whenReady[B](block: RefMany[Nothing] => B):Ref[B] = this
+
+  def orIfNone[B >: Nothing](f: => Ref[B]) = this
+  
+  def recoverWith[B >: Nothing](pf: PartialFunction[Throwable, Ref[B]]) = pf.applyOrElse(exception, { x:Throwable => this })
+  
+  def recoverManyWith[B >: Nothing](pf: PartialFunction[Throwable, RefMany[B]]) = pf.applyOrElse(exception, { x:Throwable => this })
+
   def onReady[U](onSuccess: RefMany[Nothing] => U, onNone: => U, onFail: Throwable => U) { onFail(exception) }  
 }
 
@@ -80,6 +88,14 @@ case object RefNone extends RefNothing {
   }
  
   def fold[B](initial: =>B)(each: (B, Nothing) => B) = RefItself(initial)
+
+  def whenReady[B](block: RefMany[Nothing] => B):Ref[B] = RefItself(block(this))
   
+  def orIfNone[B >: Nothing](f: => Ref[B]) = f
+
+  def recoverWith[B >: Nothing](pf: PartialFunction[Throwable, Ref[B]]) = this
+  
+  def recoverManyWith[B >: Nothing](pf: PartialFunction[Throwable, RefMany[B]]) = this
+
   def onReady[U](onSuccess: RefMany[Nothing] => U, onNone: => U, onFail: Throwable => U) { onNone }
 }

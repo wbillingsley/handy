@@ -43,11 +43,12 @@ class TestRefTraversableOnce {
   
   @Test
   def crossNoneIsEmpty {	  
-	  val rlistNum = List(1, 2, 3).toRefMany
+    val rlistNum = List(1, 2, 3).toRefMany
     
-	  val cross = (rlistNum flatMap {i => RefNone})
+    val cross = (rlistNum flatMap {i => RefNone})
+    val count = cross.fold(0) { (tot, el) => tot + 1}
 
-	  assertEquals(true, cross.isEmpty)        
+    assertEquals(0.itself, count.fetch)        
   }
   
   @Test

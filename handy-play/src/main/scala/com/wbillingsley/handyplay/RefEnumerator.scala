@@ -89,7 +89,9 @@ class RefEnumerator[T](val enumerator:Enumerator[T]) extends RefMany[T] {
     new RefFuture(enumerator |>>> iter)
   }
   
-  def onReady[U](onSuccess: com.wbillingsley.handy.RefMany[T] => U,onNone: => U,onFail: Throwable => U): Unit = onSuccess(this)
+  def whenReady[B](block: RefMany[T] => B):Ref[B] = RefItself(block(this))
+  
+  def recoverManyWith[B >: T](pf: PartialFunction[Throwable, RefMany[B]]) = this
   
 }
 

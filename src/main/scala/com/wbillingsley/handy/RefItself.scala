@@ -36,6 +36,10 @@ case class RefItself[T](val item: T) extends ResolvedRef[T] {
     toIterator.copyToArray(xs, start, len) 
   }
   
+  def orIfNone[B >: T](f: => Ref[B]) = this
+  
+  def recoverWith[B >: T](pf: PartialFunction[Throwable, Ref[B]]) = this
+  
   def exists(p: T => Boolean) = p(item)
   
   def find(p: T => Boolean) = if (p(item)) Some(item) else None

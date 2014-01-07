@@ -30,10 +30,10 @@ class RefManyById[T, K](val clazz : scala.Predef.Class[T], val rawIds: Seq[K]) e
   def withFilter(p: T => Boolean) = lookUp withFilter p
   
   def fold[B](initial: =>B)(each:(B, T) => B) = lookUp.fold(initial)(each)
+ 
+  def whenReady[B](block: RefMany[T] => B):Ref[B] = lookUp.whenReady(block)
   
-  override def onReady[U](onSuccess: RefMany[T] => U, onNone: => U, onFail: Throwable => U) {
-    lookUp.onReady(onSuccess, onNone, onFail)
-  }  
+  def recoverManyWith[B >: T](pf: PartialFunction[Throwable, RefMany[B]]) = lookUp.recoverManyWith(pf)
 
 }
 

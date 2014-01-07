@@ -188,17 +188,15 @@ trait Ref[+T] extends RSuper[T] {
 
   def withFilter(func: T => Boolean):Ref[T]
   
-  def orIfNone[B >: T](f: => Ref[B]):Ref[B] = {
-    if (isEmpty) f else this
-  }       
+  def orIfNone[B >: T](f: => Ref[B]):Ref[B]
+  
+  def recoverWith[B >: T](pf: PartialFunction[Throwable, Ref[B]]):Ref[B]
   
   def map[B](func: T => B):Ref[B]
 
   def foreach[U](func: T => U):Unit 
   
   def onComplete[U](onSuccess: T => U, onNone: => U, onFail: Throwable => U):Unit  
-
-  def isEmpty: Boolean
   
   def getId[TT >: T, K](implicit g:GetsId[TT, K]):Option[K] 
   

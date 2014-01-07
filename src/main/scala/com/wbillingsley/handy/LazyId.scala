@@ -31,7 +31,9 @@ class LazyId [T, K](clazz : scala.Predef.Class[T], id: K) extends Ref[T] {
   
   def toOption = lookUp.toOption
   
-  def isEmpty = lookUp.isEmpty	
+  def orIfNone[B >: T](f: => Ref[B]):Ref[B] = lookUp.orIfNone(f)
+  
+  def recoverWith[B >: T](pf: PartialFunction[Throwable, Ref[B]]) = lookUp.recoverWith(pf)
   
   def withFilter(p: T => Boolean) = lookUp.withFilter(p)  
 }

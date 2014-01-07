@@ -26,6 +26,8 @@ case class RefTraversableOnce[T, C[T] <: TraversableOnce[T]](val items: C[T]) ex
   
   def foreach[U](f: T => U) { items.foreach(f) }
   
+  def recoverManyWith[B >: T](pf: PartialFunction[Throwable, RefMany[B]]) = this
+  
   def isTraversableAgain = items.isTraversableAgain
   
   def toIterator = items.toIterator
@@ -50,9 +52,7 @@ case class RefTraversableOnce[T, C[T] <: TraversableOnce[T]](val items: C[T]) ex
   
   def fold[B](initial: =>B)(each:(B, T) => B) = RefItself(items.foldLeft(initial)(each))
   
-  override def onReady[U](onSuccess: RefMany[T] => U, onNone: => U, onFail: Throwable => U) {
-    if(!items.isEmpty) onSuccess(this) else onNone
-  }
+  def whenReady[B](block: RefMany[T] => B):Ref[B] = RefItself(block(this))
   
   override def toRefOne = RefItself(items)
   
@@ -67,9 +67,7 @@ case class RefTraversableRef[T, C[T] <: TraversableOnce[T]](val refs: Traversabl
   def headOption = refs.flatMap(_.fetch).toStream.headOption
   
   def toOption = headOption
-  
-  def isEmpty = refs.forall(_.isEmpty)
-  
+    
   def map[B](f: T => B) = {
     val result = refs.map(_.map(f))
     RefTraversableRef(result)
@@ -102,10 +100,9 @@ case class RefTraversableRef[T, C[T] <: TraversableOnce[T]](val refs: Traversabl
     }     
   }
   
-  override def onReady[U](onSuccess: RefMany[T] => U, onNone: => U, onFail: Throwable => U) {
-    if(!refs.isEmpty) onSuccess(this) else onNone
-  }
+  def whenReady[B](block: RefMany[T] => B):Ref[B] = RefItself(block(this))
   
+  def recoverManyWith[B >: T](pf: PartialFunction[Throwable, RefMany[B]]) = this
   
 }
 
@@ -118,8 +115,6 @@ case class RefTraversableRefMany[T, C[T] <: TraversableOnce[T]](val refs: Traver
   def headOption = refs.flatMap(_.fetch).toStream.headOption
   
   def toOption = headOption
-  
-  def isEmpty = refs.forall(_.isEmpty)
   
   def map[B](f: T => B) = {
     val result = refs.map(_.map(f))
@@ -144,11 +139,10 @@ case class RefTraversableRefMany[T, C[T] <: TraversableOnce[T]](val refs: Traver
     refs.foldLeft[Ref[B]](RefItself(initial)){(ar, refMany) =>
       ar.flatMap(a => refMany.fold(a)(each))
     }     
-  }  
-  
-  override def onReady[U](onSuccess: RefMany[T] => U, onNone: => U, onFail: Throwable => U) {
-    if(!refs.isEmpty) onSuccess(this) else onNone
   }
   
+  def whenReady[B](block: RefMany[T] => B):Ref[B] = RefItself(block(this))
+  
+  def recoverManyWith[B >: T](pf: PartialFunction[Throwable, RefMany[B]]) = this
   
 }

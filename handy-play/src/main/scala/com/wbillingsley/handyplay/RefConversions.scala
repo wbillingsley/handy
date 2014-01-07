@@ -1,19 +1,19 @@
 package com.wbillingsley.handyplay
 
 import com.wbillingsley.handy._
+import Ref._
 import play.api.libs.iteratee._
 import scala.concurrent.Future
 
 object RefConversions {
 
   implicit class EnumerateRefMany[T](val rm: RefMany[T]) {
-
+    implicit val ec = RefFuture.executionContext
+    
     def enumerate:Enumerator[T] = rm match {
       case re:RefEnumerator[T] => re.enumerator
-      case rei:RefEnumIter[T] => {
-        implicit val ec = RefFuture.executionContext
-        rei.enumerator.flatMap(trav => Enumerator.enumerate(trav))
-      }
+      case rei:RefEnumIter[T] => rei.enumerator.flatMap(trav => Enumerator.enumerate(trav))
+
       case _ => new Enumerator[T] {
         def apply[A](it: Iteratee[T, A]) = {
           import com.wbillingsley.handy.Ref._
@@ -22,6 +22,8 @@ object RefConversions {
         }
       }
     }
+    
+    def enumerateR:Ref[Enumerator[T]] = rm whenReady { _.enumerate }
   }
   
   

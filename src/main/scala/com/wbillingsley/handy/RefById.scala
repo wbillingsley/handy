@@ -22,6 +22,10 @@ case class RefById[T, K](clazz : scala.Predef.Class[T], id: K) extends Ref[T] wi
     lookUp.foreach(f)
   }
   
+  def orIfNone[B >: T](f: => Ref[B]):Ref[B] = lookUp.orIfNone(f)
+  
+  def recoverWith[B >: T](pf: PartialFunction[Throwable, Ref[B]]) = lookUp.recoverWith(pf)
+  
   def onComplete[U](onSuccess: T => U, onNone: => U, onFail: Throwable => U) { 
     lookUp.onComplete(onSuccess, onNone, onFail) 
   }
