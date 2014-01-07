@@ -35,7 +35,7 @@ object DataActionSpec {
     implicit object UFR extends UserFromRequest[User] {
       def user(request:RequestHeader) = User("Fred").itself
     }
-  
+    
     def json = DataAction.returning.json { 
       Json.obj("text" -> "json").itself
     }
@@ -55,6 +55,16 @@ object DataActionSpec {
       )
     }
     
+    def jsonFails = DataAction.returning.json {
+      new RefFailed(new IllegalStateException("This is a deliberate error"))
+    }
+    
+    def jsonFailsWithHeader = DataAction.returning.json { 
+      WithHeaderInfo(
+        data = new RefFailed(new IllegalStateException("This is a deliberate error")),
+        headerInfo = HeaderInfo(headers=Seq("myHeader" -> "myValue")).itself
+      )
+    }
   }
 
 }
@@ -88,14 +98,14 @@ class DataActionSpec extends PlaySpecification with Results {
   "DataAction" should {
     
     "return simple JSON objects" in new WithApplication(fakeApp) {      
-      val iteratee = FakeController.json.apply(FakeRequest())
+      val iteratee = FakeController.json.apply(FakeRequest().withHeaders("Accept" -> "application/json"))
       val result = Enumerator.eof |>>> iteratee 
       val body = contentAsString(result)
       body must be equalTo Json.obj("text" -> "json").toString
     }
     
     "return simple JSON objects with correct headers" in new WithApplication(fakeApp) {      
-      val iteratee = FakeController.jsonWithHeader.apply(FakeRequest())
+      val iteratee = FakeController.jsonWithHeader.apply(FakeRequest().withHeaders("Accept" -> "application/json"))
       val result = Enumerator.eof |>>> iteratee 
       val body = contentAsString(result)
       (body must be equalTo Json.obj("text" -> "json").toString) and
@@ -117,6 +127,26 @@ class DataActionSpec extends PlaySpecification with Results {
         Json.obj("thing" -> "one"), Json.obj("thing" -> "two"), Json.obj("thing" -> "three")
       ).toString     
     }
+    
+    "return a JSON error message on failure for requests accepting only JSON" in new WithApplication(fakeApp) {
+      val iteratee = FakeController.jsonFails.apply(FakeRequest().withHeaders("Accept" -> "application/json"))
+      val result = Enumerator.eof |>>> iteratee
+      val body = contentAsString(result)
+      
+      (body must be equalTo Json.obj("error" -> "This is a deliberate error").toString) and
+      (status(result) must be equalTo 500)
+    }
+    
+    "return correct headers if the headerInfo is present but the data is failure" in new WithApplication(fakeApp) {      
+      val iteratee = FakeController.jsonFailsWithHeader.apply(FakeRequest().withHeaders("Accept" -> "application/json"))
+      val result = Enumerator.eof |>>> iteratee 
+      val body = contentAsString(result)
+      
+      (body must be equalTo Json.obj("error" -> "This is a deliberate error").toString) and
+      (status(result) must be equalTo 500) and
+      (header("myHeader", result) must be equalTo Some("myValue"))
+    }
+
     
   }
   

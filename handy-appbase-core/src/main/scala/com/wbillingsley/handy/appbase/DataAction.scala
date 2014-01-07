@@ -1,18 +1,18 @@
 package com.wbillingsley.handy.appbase
 
-import play.api.mvc.{Request, RequestHeader, AnyContent, AcceptExtractors, BodyParser, BodyParsers, Action, SimpleResult, Results}
-import play.api.libs.json.Json
-import play.api.libs.iteratee.Enumerator
+import play.api.mvc.{EssentialAction, Request, RequestHeader, AnyContent, AcceptExtractors, BodyParser, BodyParsers, Action, SimpleResult, Results}
+
 import com.wbillingsley.handy._
 import Ref._
 import com.wbillingsley.handyplay.RefConversions._
 import JsonConverter._
-import scala.language.implicitConversions
-import play.api.mvc.EssentialAction
-import play.api.libs.iteratee.{Iteratee, Input, Step, Done}
-import scala.concurrent.{Future, Promise}      
-import play.api.libs.json.JsValue
 
+import play.api.libs.iteratee.{Iteratee, Enumerator, Input, Step, Done}
+import scala.concurrent.{Future, Promise}      
+import play.api.libs.json.{ JsValue, Json }
+import play.api.libs.concurrent.Execution.Implicits._
+
+import scala.language.implicitConversions
 
 /**
  * A bundle of extra information that can be returned from a data action to set headers, cookies, and Play session values
@@ -65,22 +65,68 @@ object WithHeaderInfo {
   }
 }
 
-
-
 case class DataAction[U](implicit ufr:UserFromRequest[U]) {
 
   import DataAction._
   
   /*
+   * Handles error conditions from a DataAction
+   */
+  private def handleErrors(r:Ref[Iteratee[Array[Byte], SimpleResult]])(implicit request:RequestHeader):Ref[Iteratee[Array[Byte], SimpleResult]] = { 
+    // Convert failures into appropriate responses
+    val recovered = r recoverWith {
+      case Refused(msg) => request match {
+        case Accepts.Html() => onForbidden(Refused(msg))(request).itself
+        case Accepts.Json() => doneIteratee(Results.Forbidden(Json.obj("error" -> msg))).itself
+        case _ => doneIteratee(Results.Forbidden(msg)).itself
+      }
+      case exc:Throwable if errorCodeMap.contains(exc.getClass()) => request match {
+        case Accepts.Json() => doneIteratee(Results.Status(errorCodeMap(exc.getClass))(Json.obj("error" -> exc.getMessage()))).itself
+        case _ => doneIteratee(Results.Status(errorCodeMap(exc.getClass))("User error in non-JSON request: " + exc.getMessage())).itself
+      }
+      case exc:Throwable => request match {
+        case Accepts.Html() => onInternalServerError(exc)(request).itself
+        case Accepts.Json() => doneIteratee(Results.InternalServerError(Json.obj("error" -> exc.getMessage))).itself
+        case _ => doneIteratee(Results.InternalServerError(exc.getMessage)).itself
+      }
+    }
+    
+    // And handle the case where the response is that there is nothing
+    val noneHandled = recovered orIfNone {
+      request match {
+        case Accepts.Html() => onNotFound(request).itself
+        case Accepts.Json() => doneIteratee(Results.NotFound(Json.obj("error" -> "not found"))).itself
+        case _ => doneIteratee(Results.NotFound).itself
+      }
+    }
+    
+    noneHandled
+  }
+  
+  /*
    * Processes a Ref[SimpleResult] with headers into an Iteratee that can be returned from an action's apply method 
    */
   private def refSimpleResultToIteratee(request: AppbaseRequest[_, _], whi:WithHeaderInfo[Ref[SimpleResult]]) = {
-    val it = for {
+    val refOriginal = for { simpleResult <- whi.data } yield doneIteratee(simpleResult)
+    
+    val refModified = for {
+      // Get the header info; default it if there's none but fail if there's an error
       headerInf <- whi.headerInfo orIfNone HeaderInfo().itself
-      result <- whi.data
-      modified = addHeaderInfoToResult(request, result, headerInf)
-    } yield doneIteratee(modified)
-    refEE(it)(request)
+      
+      // If the data has failed, produce a suitable response
+      handled <- handleErrors(refOriginal)(request)
+      
+      // Add the header information to the response
+      withHeaders = handled.map { sr => addHeaderInfoToResult(request, sr, headerInf) }
+    } yield withHeaders
+    
+    // Convert the Ref[Iteratee[...]] to a Future[Iteratee[...]]
+    val futModified = refModified.toFuture.map(_.getOrElse(doneIteratee(
+      Results.InternalServerError("Error inside DataAction library: We handled the 'none' case but still there was nothing")
+    )))
+    
+    // Flatten and return
+    Iteratee.flatten(futModified)
   }
   
   /*
@@ -124,30 +170,45 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
    * An action returning a Result
    */
   def json(block: AppbaseRequest[AnyContent, U] => WithHeaderInfo[Ref[JsValue]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request => 
-    val wrapped = new AppbaseRequest(request)
-    val whi = block(wrapped)
-    val res = for (j <- whi.data) yield Results.Ok(j)
-    refSimpleResultToIteratee(wrapped, WithHeaderInfo(res, whi.headerInfo))
+    request match {
+      case Accepts.Html() => homeAction(request)
+      case Accepts.Json() => {
+        val wrapped = new AppbaseRequest(request)
+        val whi = block(wrapped)
+        val res = for (j <- whi.data) yield Results.Ok(j)
+        refSimpleResultToIteratee(wrapped, WithHeaderInfo(res, whi.headerInfo))
+      }
+    }
   }
     
   /**
    * An action returning a Result
    */
   def json(block: => WithHeaderInfo[Ref[JsValue]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request => 
-    val wrapped = new AppbaseRequest(request)
-    val whi = block
-    val res = for (j <- whi.data) yield Results.Ok(j)
-    refSimpleResultToIteratee(wrapped, WithHeaderInfo(res, whi.headerInfo))
+    request match {
+      case Accepts.Html() => homeAction(request)
+      case Accepts.Json() => {
+        val wrapped = new AppbaseRequest(request)
+        val whi = block
+        val res = for (j <- whi.data) yield Results.Ok(j)
+        refSimpleResultToIteratee(wrapped, WithHeaderInfo(res, whi.headerInfo))
+      }
+    }
   }
   
   /**
    * An action returning a Result
    */
   def json[A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => WithHeaderInfo[Ref[JsValue]]) = BodyAction(bodyParser) { implicit request =>
-    val wrapped = new AppbaseRequest(request)
-    val whi = block(wrapped)
-    val res = for (j <- whi.data) yield Results.Ok(j)
-    refSimpleResultToIteratee(wrapped, WithHeaderInfo(res, whi.headerInfo))
+    request match {
+      case Accepts.Html() => homeAction(request)
+      case Accepts.Json() => {
+        val wrapped = new AppbaseRequest(request)
+        val whi = block(wrapped)
+        val res = for (j <- whi.data) yield Results.Ok(j)
+        refSimpleResultToIteratee(wrapped, WithHeaderInfo(res, whi.headerInfo))
+      }
+    }
   }    
   
   
@@ -155,7 +216,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
    * An action returning a single item that can be converted into JSON for the requesting user
    */
   def one[T](block: => WithHeaderInfo[Ref[T]])(implicit jc:JsonConverter[T, U]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
-	request match {
+    request match {
       case Accepts.Html() => homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
@@ -299,8 +360,6 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
 
 object DataAction extends AcceptExtractors {
   
-  import RefFuture.executionContext
-  
   // Allows syntactic sugar of "DataAction returning one"
   def returning[U](implicit ufr:UserFromRequest[U]) = DataAction()(ufr)
   
@@ -353,6 +412,9 @@ object DataAction extends AcceptExtractors {
     for (r <- fresult) yield addHeaderInfoToResult(wrapped, r)
   }
   
+  /**
+   * Applies the headerInfo to the result
+   */
   protected def addHeaderInfoToResult(wrapped:AppbaseRequest[_, _], result:SimpleResult, headerInfo:HeaderInfo = HeaderInfo()) = {
     var r = result
     
@@ -376,57 +438,11 @@ object DataAction extends AcceptExtractors {
         }
       }
     }
-    
-    
   }
-  
   
   /**
    * Maps exceptions to HTTP error codes. For instance, you may wish to register your UserError exceptions as BadRequest
    */
   val errorCodeMap = scala.collection.mutable.Map.empty[Class[_], Int]
-  
-  /**
-   * Converts a Ref[Result] to an asychronous result
-   */
-  implicit def refEE(r:Ref[Iteratee[Array[Byte], SimpleResult]])(implicit request:RequestHeader):Iteratee[Array[Byte], SimpleResult] = { 
-      import scala.concurrent._
-      
-      val p = promise[Iteratee[Array[Byte], SimpleResult]]
-      r onComplete(
-        onSuccess = p success _,
-        onNone = p success {
-          request match {
-            case Accepts.Html() => onNotFound(request)
-            case Accepts.Json() => doneIteratee(Results.NotFound(Json.obj("error" -> "not found")))
-            case _ => doneIteratee(Results.NotFound)
-          }
-        },
-        onFail = _ match {
-          case Refused(msg) => p success {
-            request match {
-              case Accepts.Html() => onForbidden(Refused(msg))(request)
-              case Accepts.Json() => doneIteratee(Results.Forbidden(Json.obj("error" -> msg)))
-              case _ => doneIteratee(Results.Forbidden(msg))
-            }            
-          }
-          case exc:Throwable if errorCodeMap.contains(exc.getClass()) => p success {
-            request match {
-              case Accepts.Json() => doneIteratee(Results.Status(errorCodeMap(exc.getClass))(Json.obj("error" -> exc.getMessage())))
-              case _ => doneIteratee(Results.Status(errorCodeMap(exc.getClass))("User error in non-JSON request: " + exc.getMessage()))
-            }            
-          }
-          case exc:Throwable => p success {
-            request match {
-              case Accepts.Html() => onInternalServerError(exc)(request)
-              case Accepts.Json() => doneIteratee(Results.InternalServerError(Json.obj("error" -> exc.getMessage)))
-              case _ => doneIteratee(Results.InternalServerError(exc.getMessage))
-            }                        
-          }
-        }
-      )
-      Iteratee.flatten(p.future)
-    
-  }
   
 }
