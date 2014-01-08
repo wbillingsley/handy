@@ -25,12 +25,11 @@ object DataActionSpec {
     case class Thing(text:String)
   
     implicit object ThingToJson extends JsonConverter[Thing, User] {
-    
       def toJson(t:Thing) = Json.obj("thing" -> t.text).itself
-    
       def toJsonFor(t:Thing, appr:Approval[User]) = toJson(t)
-    
     }
+    
+    implicit val dataActionConfig = DataActionConfig()
   
     implicit object UFR extends UserFromRequest[User] {
       def user(request:RequestHeader) = User("Fred").itself

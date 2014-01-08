@@ -65,7 +65,42 @@ object WithHeaderInfo {
   }
 }
 
-case class DataAction[U](implicit ufr:UserFromRequest[U]) {
+/**
+ * Configuration for a DataAction. This sets, for instance 
+ */
+case class DataActionConfig(
+  
+  /**
+   * The action to perform when a request accepts HTML. This should be your application's home page.
+   */
+  val homeAction:EssentialAction = Action(Results.NotFound("No home action has been set")),
+
+  /**
+   * The action for HTML requests that are not found.
+   */
+  val onNotFound:EssentialAction = Action(Results.NotFound("Not found")),
+  
+  /**
+   * The action for HTML requests that are forbidden.
+   */
+  val onForbidden: Refused => EssentialAction = { (refused) => Action(Results.Forbidden(refused.getMessage)) },
+  
+  /**
+   * The action for HTML requests that fail.
+   */
+  val onInternalServerError: Throwable => EssentialAction = { (exc) => Action(Results.InternalServerError(exc.getMessage)) },
+
+  /**
+   * Maps failures to HTTP error codes. For instance, you may wish to register your UserError exceptions as BadRequest so
+   * that they are not returned to the client as InternalServerError.
+   */
+  val errorCodeMap:Map[Class[_], Int] = Map.empty
+)
+
+/**
+ * Generates actions suitable for a "single-page app" style site, that communicates with the browser using JSON REST requests.
+ */
+case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U]) {
 
   import DataAction._
   
@@ -76,16 +111,16 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
     // Convert failures into appropriate responses
     val recovered = r recoverWith {
       case Refused(msg) => request match {
-        case Accepts.Html() => onForbidden(Refused(msg))(request).itself
+        case Accepts.Html() => config.onForbidden(Refused(msg))(request).itself
         case Accepts.Json() => doneIteratee(Results.Forbidden(Json.obj("error" -> msg))).itself
         case _ => doneIteratee(Results.Forbidden(msg)).itself
       }
-      case exc:Throwable if errorCodeMap.contains(exc.getClass()) => request match {
-        case Accepts.Json() => doneIteratee(Results.Status(errorCodeMap(exc.getClass))(Json.obj("error" -> exc.getMessage()))).itself
-        case _ => doneIteratee(Results.Status(errorCodeMap(exc.getClass))("User error in non-JSON request: " + exc.getMessage())).itself
+      case exc:Throwable if config.errorCodeMap.contains(exc.getClass()) => request match {
+        case Accepts.Json() => doneIteratee(Results.Status(config.errorCodeMap(exc.getClass))(Json.obj("error" -> exc.getMessage()))).itself
+        case _ => doneIteratee(Results.Status(config.errorCodeMap(exc.getClass))(exc.getMessage())).itself
       }
       case exc:Throwable => request match {
-        case Accepts.Html() => onInternalServerError(exc)(request).itself
+        case Accepts.Html() => config.onInternalServerError(exc)(request).itself
         case Accepts.Json() => doneIteratee(Results.InternalServerError(Json.obj("error" -> exc.getMessage))).itself
         case _ => doneIteratee(Results.InternalServerError(exc.getMessage)).itself
       }
@@ -94,7 +129,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
     // And handle the case where the response is that there is nothing
     val noneHandled = recovered orIfNone {
       request match {
-        case Accepts.Html() => onNotFound(request).itself
+        case Accepts.Html() => config.onNotFound(request).itself
         case Accepts.Json() => doneIteratee(Results.NotFound(Json.obj("error" -> "not found"))).itself
         case _ => doneIteratee(Results.NotFound).itself
       }
@@ -171,7 +206,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
    */
   def json(block: AppbaseRequest[AnyContent, U] => WithHeaderInfo[Ref[JsValue]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request => 
     request match {
-      case Accepts.Html() => homeAction(request)
+      case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block(wrapped)
@@ -186,7 +221,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
    */
   def json(block: => WithHeaderInfo[Ref[JsValue]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request => 
     request match {
-      case Accepts.Html() => homeAction(request)
+      case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block
@@ -201,7 +236,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
    */
   def json[A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => WithHeaderInfo[Ref[JsValue]]) = BodyAction(bodyParser) { implicit request =>
     request match {
-      case Accepts.Html() => homeAction(request)
+      case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block(wrapped)
@@ -217,7 +252,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
    */
   def one[T](block: => WithHeaderInfo[Ref[T]])(implicit jc:JsonConverter[T, U]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
     request match {
-      case Accepts.Html() => homeAction(request)
+      case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block
@@ -236,7 +271,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
    */
   def one[T](block: AppbaseRequest[AnyContent, U] => WithHeaderInfo[Ref[T]])(implicit jc:JsonConverter[T, U]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
 	request match {
-      case Accepts.Html() => homeAction(request)
+      case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block(wrapped)
@@ -255,7 +290,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
    */
   def one[T, A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => WithHeaderInfo[Ref[T]])(implicit jc:JsonConverter[T, U]) = BodyAction(bodyParser) { implicit request =>
 	request match {
-      case Accepts.Html() => homeAction(request)
+      case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block(wrapped)
@@ -274,7 +309,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
    */
   def many[T](block: => WithHeaderInfo[RefMany[T]])(implicit jc:JsonConverter[T, U]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
 	request match {
-      case Accepts.Html() => homeAction(request)
+      case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block
@@ -289,7 +324,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
    */
   def many[T](block: AppbaseRequest[AnyContent, U] => WithHeaderInfo[RefMany[T]])(implicit jc:JsonConverter[T, U]) =  BodyAction(BodyParsers.parse.anyContent) { implicit request =>
 	request match {
-      case Accepts.Html() => homeAction(request)
+      case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block(wrapped)
@@ -304,7 +339,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
    */
   def many[T, A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => WithHeaderInfo[RefMany[T]])(implicit jc:JsonConverter[T, U]) = BodyAction(bodyParser) { implicit request =>
 	request match {
-      case Accepts.Html() => homeAction(request)
+      case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block(wrapped)
@@ -319,7 +354,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
    */
   def manyJson(block: => WithHeaderInfo[RefMany[JsValue]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
     request match {
-      case Accepts.Html() => homeAction(request)
+      case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block
@@ -333,7 +368,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
    */
   def manyJson(block: AppbaseRequest[AnyContent, U] => WithHeaderInfo[RefMany[JsValue]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
     request match {
-      case Accepts.Html() => homeAction(request)
+      case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block(wrapped)
@@ -347,7 +382,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
    */
   def manyJson[A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => WithHeaderInfo[RefMany[JsValue]]) = BodyAction(bodyParser) { implicit request =>
     request match {
-      case Accepts.Html() => homeAction(request)
+      case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block(wrapped)
@@ -361,7 +396,7 @@ case class DataAction[U](implicit ufr:UserFromRequest[U]) {
 object DataAction extends AcceptExtractors {
   
   // Allows syntactic sugar of "DataAction returning one"
-  def returning[U](implicit ufr:UserFromRequest[U]) = DataAction()(ufr)
+  def returning[U](implicit config:DataActionConfig, ufr:UserFromRequest[U]) = DataAction()(config, ufr)
   
   def doneIteratee[A](res:SimpleResult) = Done[Array[Byte], SimpleResult](res, Input.Empty)     
     
@@ -393,13 +428,6 @@ object DataAction extends AcceptExtractors {
     def apply[A](parser:BodyParser[A])(block: Request[A] => Iteratee[Array[Byte], SimpleResult]) = new BodyAction(parser)(block)
   }
   
-  var homeAction:EssentialAction = Action(Results.NotFound("No home action has been set"))
-  
-  var onNotFound:EssentialAction = Action(Results.NotFound("No 404 action has been set"))
-  
-  var onForbidden: Refused => EssentialAction = { (refused) => Action(Results.Forbidden("No forbidden action has been set")) }
-  
-  var onInternalServerError: Throwable => EssentialAction = { (exc) => Action(Results.InternalServerError("No 500 action has been set")) }
     
   
   /**
@@ -440,9 +468,6 @@ object DataAction extends AcceptExtractors {
     }
   }
   
-  /**
-   * Maps exceptions to HTTP error codes. For instance, you may wish to register your UserError exceptions as BadRequest
-   */
-  val errorCodeMap = scala.collection.mutable.Map.empty[Class[_], Int]
+
   
 }
