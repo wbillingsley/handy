@@ -1,7 +1,7 @@
 package com.wbillingsley.handy.realistic
 
 import com.wbillingsley.handy._
-
+import scala.language.implicitConversions
 
 /*
  * Our implicit conversions for turning Ref into a response

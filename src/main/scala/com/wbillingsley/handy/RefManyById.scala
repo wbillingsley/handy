@@ -5,15 +5,15 @@ import Ref._
 /**
  * Refers to many items by their ID.
  */
-class RefManyById[T, K](val clazz : scala.Predef.Class[T], val rawIds: Seq[K]) extends RefMany[T] {
+case class RefManyById[T, K](val clazz : scala.Predef.Class[T], val rawIds: Seq[K])(implicit lookUpMany:LookUpMany[T, K], val lookUpOne:LookUpOne[T, K]) extends RefMany[T] {
   
   def getIds[TT >: T, KK](implicit g:GetsId[TT, KK]) = {
 	for (i <- rawIds; c <- g.canonical(i)) yield c
   }  
   
-  def lookUp = RefManyById.lookUpMethod.lookup(this)  
+  def lookUp = lookUpMany.lookUpMany(this)
   
-  def first = Ref.fromOptionId(clazz, rawIds.headOption)
+  def first = Ref.fromOptionId(clazz, rawIds.headOption)(lookUpOne)
   
   def fetch = lookUp.fetch
     
@@ -38,22 +38,27 @@ class RefManyById[T, K](val clazz : scala.Predef.Class[T], val rawIds: Seq[K]) e
 }
 
 object RefManyById {
-
-  trait LookUp {
-    def lookup[T](r: RefManyById[T, _]): RefMany[T]
+  
+  def LooksUpNothing[T, K] = new LookUp[T, K] {
+    override def lookUpOne(r:RefById[T,K]) = RefNone
+    
+    override def lookUpMany(r:RefManyById[T,K]) = RefNone
   }
-
-  /**
-   * The default lookup is not set. It would be possible to by default fetch each item in turn, but that
-   * is not preferred. 
-   */
-  val defaultLookUp = new LookUp {
-    def lookup[T](r: RefManyById[T, _]) = RefFailed(new UnsupportedOperationException("RefManyById.lookUpMethod not set"))
+  
+  def empty[T, K](clazz: scala.Predef.Class[T]) = {
+    val nada = LooksUpNothing[T, K]
+    new RefManyById(clazz, Seq.empty)(nada, nada)
   }
-
-  /**
-   * Set this method to define how RefByIds are looked up.
-   */
-  var lookUpMethod: LookUp = defaultLookUp
-
+  
 }
+
+
+/**
+ * This has to be a trait, rather than just a function because a RefManyById[T, K] is already a RefMany[T].
+ * Which means that if it was just a function, then Predef.conforms would be implicitly found.
+ */
+trait LookUpMany[T, K] {
+  def lookUpMany(r:RefManyById[T, K]):RefMany[T]
+}
+
+trait LookUp[T, K] extends LookUpMany[T, K] with LookUpOne[T, K]

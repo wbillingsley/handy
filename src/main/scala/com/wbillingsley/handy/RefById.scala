@@ -8,13 +8,13 @@ import scala.language.higherKinds
  * clazz is kept because it will be needed at run-time by the lookUp method (to know which class to look 
  * up in the database)
  */
-case class RefById[T, K](clazz : scala.Predef.Class[T], id: K) extends Ref[T] with UnresolvedRef[T] {
+case class RefById[T, K](clazz : scala.Predef.Class[T], id: K)(implicit val lookUpMethod:LookUpOne[T, K]) extends Ref[T] with UnresolvedRef[T] {
     
   def getId[TT >: T, KK](implicit g:GetsId[TT, KK]) = {
 	g.canonical(id)
   }  
 
-  def lookUp = RefById.lookUpMethod.lookup(this)
+  def lookUp = lookUpMethod.lookUpOne(this)
   
   def fetch = lookUp.fetch
   
@@ -63,24 +63,14 @@ case class RefById[T, K](clazz : scala.Predef.Class[T], id: K) extends Ref[T] wi
   def isEmpty = fetch.isEmpty	
   
   def withFilter(p: T => Boolean) = lookUp.withFilter(p)
+  
 }
 
 
-object RefById {
-
-	trait LookUp {
-	  def lookup[T](r:RefById[T,_]): Ref[T]
-	}
-  
-	/**
-	 * If there's n
-	 */
-	val defaultLookUp = new LookUp {
-	  def lookup[T](r:RefById[T,_]) = throw new UnsupportedOperationException("RefById.lookUpMethod has not been set")
-	}
-	
-	/**
-	 * Set this method to define how RefByIds are looked up. 
-	 */
-	var lookUpMethod:LookUp = defaultLookUp
+/**
+ * This has to be a trait, rather than just a function because a RefManyById[T, K] is already a RefMany[T].
+ * Which means that if it was just a function, then Predef.conforms would be implicitly found.
+ */
+trait LookUpOne[T, K] {
+  def lookUpOne(r:RefById[T, K]):Ref[T] 
 }

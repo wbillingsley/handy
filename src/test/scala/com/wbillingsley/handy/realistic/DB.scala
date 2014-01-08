@@ -14,17 +14,6 @@ import Ref._
  */
 object DB {
 
-  case class DBUser(val id: Int, var name: String, var roles: Set[Role] = Set(Viewer)) extends User
-  case class DBPage(val id: Int, var _createdBy: Option[Int], var content: String, var isPublic: Boolean) extends Page {
-
-    def createdBy = RefById(classOf[User], _createdBy)
-
-    def createdBy_=(u: Ref[User]) {
-      _createdBy = u.getId
-    }
-
-  }
-
   import scala.collection.mutable
 
   val userTable = mutable.Map(
@@ -35,30 +24,51 @@ object DB {
   val pageTable = mutable.Map(
     1 -> DBPage(1, Some(1), "A public page", true),
     2 -> DBPage(2, Some(1), "A non-public page", false))
+  
+  /**
+   * We are resolving users synchronously, but pages as futures. That's just to show that the handy framework can cope!
+   */
+  implicit object User extends LookUp[User, Int] {
+    def lookUpOne(r:RefById[User, Int]) = Ref(userTable.get(r.id))
+    
+    def lookUpMany(r:RefManyById[User, Int]) = {
+      (for {
+        id <- r.rawIds
+        u <- userTable.get(id)
+      } yield u).toRefMany
+    }
+  }
+
+  implicit object Page extends LookUp[Page, Int] {
+    import scala.concurrent._
+    import ExecutionContext.Implicits.global    
+    
+    def lookUpOne(r:RefById[Page, Int]) = new RefFuture( future { pageTable(r.id) } )
+    
+    def lookUpMany(r:RefManyById[Page, Int]) = {
+      (for {
+        id <- r.rawIds
+        u <- pageTable.get(id)
+      } yield u).toRefMany
+    }
+  }
+
+  case class DBUser(val id: Int, var name: String, var roles: Set[Role] = Set(Viewer)) extends User
+  case class DBPage(val id: Int, var _createdBy: Option[Int], var content: String, var isPublic: Boolean) extends Page {
+
+    def createdBy = Ref.fromOptionId(classOf[User], _createdBy)
+
+    def createdBy_=(u: Ref[User]) {
+      _createdBy = u.getId
+    }
+
+  }
 
   def createPage(createdBy: Ref[User], content: String, isPublic: Boolean = false) = {
     val key = pageTable.keySet.max + 1
     val p = DBPage(key, createdBy.getId, content, isPublic)
     pageTable.put(key, p)
     p.itself
-  }
-  
-  import scala.concurrent._
-  import ExecutionContext.Implicits.global
-  
-  /**
-   * We are resolving users synchronously, but pages as futures. That's just to show that the handy framework can cope!
-   */
-  def resolvers:Map[Class[_], (Int) => Ref[AppItem]] = Map(          
-    classOf[User] -> { (id:Int) => Ref(userTable.get(id)) },
-    classOf[Page] -> { (id:Int) => new RefFuture( future { pageTable(id) } ) }
-  )
-  
-  def resolve[T](clazz: Class[T], id:Int) = {
-    resolvers.get(clazz) match {
-      case Some(resolver) => resolver(id).asInstanceOf[Ref[T]]
-      case _ => RefFailed(new IllegalArgumentException("I don't know how to resolve references to that class"))
-    }
   }
   
 }

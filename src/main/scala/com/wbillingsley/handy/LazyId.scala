@@ -3,9 +3,9 @@ package com.wbillingsley.handy
 /**
  * A Ref by id, that uses a lazy val to cache the result of looking it up
  */
-class LazyId [T, K](clazz : scala.Predef.Class[T], id: K) extends Ref[T] {
+class LazyId [T, K](clazz : scala.Predef.Class[T], id: K)(implicit val lookUpMethod:LookUpOne[T, K]) extends Ref[T] {
 
-  val rbi = RefById(clazz, id)
+  val rbi = RefById(clazz, id)(lookUpMethod)
   
   lazy val lookUp = rbi.lookUp
   

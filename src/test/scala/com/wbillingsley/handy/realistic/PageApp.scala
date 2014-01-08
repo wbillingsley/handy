@@ -9,6 +9,9 @@ import WebFramework._
  */	
 object PageApp { 
   
+  // Import the lookUp methods from the database
+  import DB._
+  
   def setPageContent(loggedInUser:Option[Int], pageId:Option[Int], content:String):Ref[Response] = {
     val u = Ref.fromOptionId(classOf[User], loggedInUser)
     val p = Ref.fromOptionId(classOf[Page], loggedInUser)

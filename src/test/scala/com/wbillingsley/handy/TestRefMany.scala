@@ -29,24 +29,20 @@ object TestRefMany {
     }    
   }
   
-  @BeforeClass
-  def beforeClass = {
-        
-    val m:Map[Class[_], Function1[Int, _]] = Map(classOf[Foo] -> ((i:Int) => Foo(i)), classOf[Bar] -> ((i:Int) => Bar(i)))  
-    
-    RefManyById.lookUpMethod = new RefManyById.LookUp {      
-      def lookup[T](rm:RefManyById[T, _]) = {
-        val s = rm.rawIds
-        
-        val maker = m.get(rm.clazz)
-        maker match {
-          case Some(f) => s.map((i) => f(i.toString.toInt).asInstanceOf[T]).toRefMany
-          case None => RefFailed(new IllegalArgumentException("Don't know how to look that up"))
-        }
-      }
-    }
-  }
+ 
   
+  implicit object LookupBar extends LookUp[Bar, Int] {
+    def lookUpMany(r:RefManyById[Bar, Int]) = (for { id <- r.rawIds } yield Bar(id)).toRefMany
+    
+    def lookUpOne(r:RefById[Bar, Int]) = Bar(r.id).itself
+  } 
+  
+
+  implicit object LookupFoo extends LookUp[Foo, Int] {
+    def lookUpMany(r:RefManyById[Foo, Int]) = (for { id <- r.rawIds } yield Foo(id)).toRefMany
+    
+    def lookUpOne(r:RefById[Foo, Int]) = Foo(r.id).itself
+  } 
 }
 
 class TestRefMany {

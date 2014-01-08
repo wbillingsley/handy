@@ -21,6 +21,14 @@ object TestPerm {
   
   case class Bar(id:Int) extends HasId[Int]
   
+  // To ensure we're not actually making a lookup, we define it here so it would always fail
+  implicit def LookupAlwaysFails[T, K] = new LookUp[T, K] {
+    
+    def lookUpOne(r:RefById[T,K]) = RefNone
+    
+    def lookUpMany(r:RefManyById[T,K]) = RefNone
+    
+  }
   
   implicit object gg extends GetsId[HasId[Int], Int] {
     def getId(obj: HasId[Int]) = Some(obj.id)

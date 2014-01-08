@@ -53,9 +53,9 @@ object Ref {
     def itself = RefItself(it) 
   }
   
-  def fromOptionId[T, K](clazz : scala.Predef.Class[T], opt: Option[K]) = {
+  def fromOptionId[T, K](clazz : scala.Predef.Class[T], opt: Option[K])(implicit lookUp:LookUpOne[T, K]) = {
     opt match {
-      case Some(id) => RefById(clazz, id)
+      case Some(id) => RefById(clazz, id)(lookUp)
       case None => RefNone
     }
   }
@@ -141,7 +141,7 @@ object Ref {
   def itself[T](item: T) = RefItself(item)
     
   
-  def apply[T, K](clazz : scala.Predef.Class[T], opt: Option[K]) = fromOptionId(clazz, opt)
+  def apply[T, K](clazz : scala.Predef.Class[T], opt: Option[K])(implicit lookUp:LookUpOne[T, K]) = fromOptionId(clazz, opt)(lookUp)
 
   def apply[T](opt: Option[T]) = fromOptionItem(opt)
   

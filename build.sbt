@@ -4,11 +4,11 @@ organization in ThisBuild := "com.wbillingsley"
 
 version in ThisBuild := "0.5-SNAPSHOT"
 
-scalaVersion in ThisBuild := "2.10.2"
+scalaVersion in ThisBuild := "2.10.3"
 
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation", "-feature")
 
-crossScalaVersions in ThisBuild := Seq("2.10.2")
+crossScalaVersions in ThisBuild := Seq("2.10.3")
 
 licenses in ThisBuild := Seq("MIT License" -> url("http://www.opensource.org/licenses/mit-license.php"))
 

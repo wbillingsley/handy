@@ -12,23 +12,13 @@ trait DAO[T <: HasStringId] {
   
   import RefFuture.executionContext
   
-  /**
-   * Partial function for looking up RefById to this class
-   */
-  val lookupPf: PartialFunction[RefById[_, _], Ref[T]] = { 
-    case r if r.clazz isAssignableFrom(clazz) => {
-      byId(r.id.toString)
-    }
+  implicit object LookUp extends LookUp[T, String] {
+    
+    def lookUpOne(r:RefById[T, String]) = byId(r.id)
+    
+    def lookUpMany(r:RefManyById[T, String]) = manyById(r.rawIds)
+    
   }
-
-  /**
-   * Partial function for looking up RefManyById to this class
-   */
-  val lookupManyPf: PartialFunction[RefManyById[_, _], RefMany[T]] = { 
-    case r if r.clazz isAssignableFrom(clazz) => {
-      manyById(r.rawIds.map(_.toString))
-    }
-  }  
   
   /**
    * A reference to the class object for the type this retrieves.

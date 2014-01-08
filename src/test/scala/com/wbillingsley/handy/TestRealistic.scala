@@ -9,25 +9,6 @@ import org.junit.Assert._
 import org.junit._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-
-object TestRealistic {
-  
-  val lum = new RefById.LookUp {
-      
-      override def lookup[T](r:RefById[T, _]):Ref[T] = {
-        val id = r.id match {
-          case s:String => s.toInt
-          case i:Int => i
-          case _ => -1
-        }
-        
-        DB.resolve(r.clazz, id)        
-      }
-    
-  }
-  
-}
-
 /**
  * Tests our mocked up web application in com.wbillingsley.handy.realistic works.
  * 
@@ -38,10 +19,6 @@ class TestRealistic {
   import scala.concurrent._
   import scala.concurrent.duration._
   
-  @Before def before {
-    RefById.lookUpMethod = TestRealistic.lum
-  }
-
   @Test def testEditorCreateSucceeds {
     
     // This should succeed as user #2 is an editor
