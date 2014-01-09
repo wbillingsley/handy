@@ -8,15 +8,17 @@ import com.wbillingsley.handy._
 import com.wbillingsley.handyplay._
 import Ref._
 
-trait DAO[T <: HasStringId] {
+trait DAO {
+  
+  type DataT <: HasStringId
   
   import RefFuture.executionContext
   
-  implicit object LookUp extends LookUp[T, String] {
+  implicit object LookUp extends LookUp[DataT, String] {
     
-    def lookUpOne(r:RefById[T, String]) = byId(r.id)
+    def lookUpOne(r:RefById[DataT, String]) = byId(r.id)
     
-    def lookUpMany(r:RefManyById[T, String]) = manyById(r.rawIds)
+    def lookUpMany(r:RefManyById[DataT, String]) = manyById(r.rawIds)
     
   }
   
@@ -26,7 +28,7 @@ trait DAO[T <: HasStringId] {
    * class in lookupPf.  (We would use TypeTags except we're waiting for the
    * thread safety issue with them to be fixed.)
    */
-  val clazz:Class[T]
+  val clazz:Class[DataT]
   
   /**
    * The name of the collection in the database
@@ -46,7 +48,7 @@ trait DAO[T <: HasStringId] {
   /**
    * Converts from BSON to the transfer object
    */
-  implicit val bsonReader:BSONDocumentReader[T];
+  implicit val bsonReader:BSONDocumentReader[DataT];
   
   /**
    * Implicit conversion that allows Ref[_] to be written as BSON
@@ -104,7 +106,7 @@ trait DAO[T <: HasStringId] {
    * Fetches and deserializes items by their ID
    */
   def byId(id:String) = {
-    val fo = coll.find(BSONDocument(idIs(id))).one[T]    
+    val fo = coll.find(BSONDocument(idIs(id))).one[DataT]    
     new RefFutureOption(fo)
   } 
   
@@ -145,46 +147,46 @@ trait DAO[T <: HasStringId] {
   /**
    * Creates a blank unsaved object
    */
-  def unsaved:T
+  def unsaved:DataT
   
-  def updateAndFetch(query:BSONDocument, update:BSONDocument, upsert:Boolean = false):Ref[T] = {
+  def updateAndFetch(query:BSONDocument, update:BSONDocument, upsert:Boolean = false):Ref[DataT] = {
     val c = coll
     val fle = c.update(query, update, GetLastError(true), upsert=upsert) 
-    val fut = fle.map { _ => new RefFutureOption(c.find(query).one[T]) } recover { case x:Throwable => RefFailed(x) }
+    val fut = fle.map { _ => new RefFutureOption(c.find(query).one[DataT]) } recover { case x:Throwable => RefFailed(x) }
     new RefFutureRef(fut)
   }
   
-  def updateSafe(query:BSONDocument, update:BSONDocument, item:T, upsert:Boolean = false):Ref[T] = {
+  def updateSafe(query:BSONDocument, update:BSONDocument, item:DataT, upsert:Boolean = false):Ref[DataT] = {
     val c = coll
     val fle = c.update(query, update, GetLastError(true), upsert=upsert) 
     val fut = fle.map { _ => RefItself(item) } recover { case x:Throwable => RefFailed(x) }
     new RefFutureRef(fut)
   }
 
-  def updateUnsafe(query:BSONDocument, update:BSONDocument, item:T, upsert:Boolean = false):Ref[T] = {
+  def updateUnsafe(query:BSONDocument, update:BSONDocument, item:DataT, upsert:Boolean = false):Ref[DataT] = {
     val c = coll
     val fle = c.update(query, update, GetLastError(false), upsert=upsert) 
     val fut = fle.map { _ => RefItself(item) } recover { case x:Throwable => RefFailed(x) }
     new RefFutureRef(fut)
   }
   
-  def saveSafe(doc:BSONDocument, item:T):Ref[T] = {
+  def saveSafe(doc:BSONDocument, item:DataT):Ref[DataT] = {
     val c = coll
     val fle = c.save(doc, GetLastError(true)) 
     val fut = fle.map { _ => RefItself(item) } recover { case x:Throwable => RefFailed(x) }
     new RefFutureRef(fut)    
   }
   
-  def findMany(query:BSONDocument):RefMany[T] = {
-    new RefEnumIter(coll.find(query).cursor[T].enumerateBulks(maxDocs=Int.MaxValue, stopOnError=true))
+  def findMany(query:BSONDocument):RefMany[DataT] = {
+    new RefEnumIter(coll.find(query).cursor[DataT].enumerateBulks(maxDocs=Int.MaxValue, stopOnError=true))
   }
 
-  def findSorted(query:BSONDocument, sort:BSONDocument):RefMany[T] = {
-    new RefEnumIter(coll.find(query).sort(sort).cursor[T].enumerateBulks(maxDocs=Int.MaxValue, stopOnError=true))
+  def findSorted(query:BSONDocument, sort:BSONDocument):RefMany[DataT] = {
+    new RefEnumIter(coll.find(query).sort(sort).cursor[DataT].enumerateBulks(maxDocs=Int.MaxValue, stopOnError=true))
   }
 
   
-  def findOne(query:BSONDocument):Ref[T] = {
-    new RefFutureOption(coll.find(query).one[T])    
+  def findOne(query:BSONDocument):Ref[DataT] = {
+    new RefFutureOption(coll.find(query).one[DataT])    
   }
 }

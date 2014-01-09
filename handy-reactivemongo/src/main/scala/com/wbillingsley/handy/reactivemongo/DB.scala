@@ -7,9 +7,9 @@ import reactivemongo.bson._
 import indexes.{Index, IndexType}
 import scala.concurrent.ExecutionContext.Implicits.global
 
-abstract class DBConnector {
+class DBConnector {
   
-  var dbName:String
+  var dbName:String = "default_database"
     
   var connectionString = "localhost:27017"
     
