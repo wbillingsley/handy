@@ -98,6 +98,11 @@ object Approval {
       }
     }
     
+    /**
+     * Returns a Ref[Boolean] 
+     */
+    def askBoolean(permission: Perm[T]) = askOne(permission) map(_ => true) recoverWith(PartialFunction.apply((x:Throwable) => false.itself)) orIfNone false.itself
+    
   }
   
   
