@@ -29,7 +29,10 @@ object DataActionSpec {
       def toJsonFor(t:Thing, appr:Approval[User]) = toJson(t)
     }
     
-    implicit val dataActionConfig = DataActionConfig()
+    implicit val dataActionConfig = new DataActionConfig {
+      def homeAction = Action { Results.Ok("") }
+      def errorCodeMap = Map.empty
+    }
   
     implicit object UFR extends UserFromRequest[User] {
       def user(request:RequestHeader) = User("Fred").itself

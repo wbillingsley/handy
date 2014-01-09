@@ -68,34 +68,34 @@ object WithHeaderInfo {
 /**
  * Configuration for a DataAction. This sets, for instance 
  */
-case class DataActionConfig(
+trait DataActionConfig {
   
   /**
    * The action to perform when a request accepts HTML. This should be your application's home page.
    */
-  val homeAction:EssentialAction = Action(Results.NotFound("No home action has been set")),
+  def homeAction:EssentialAction
 
   /**
    * The action for HTML requests that are not found.
    */
-  val onNotFound:EssentialAction = Action(Results.NotFound("Not found")),
+  def onNotFound:EssentialAction = Action(Results.NotFound("Not found"))
   
   /**
    * The action for HTML requests that are forbidden.
    */
-  val onForbidden: Refused => EssentialAction = { (refused) => Action(Results.Forbidden(refused.getMessage)) },
+  def onForbidden: Refused => EssentialAction = { (refused) => Action(Results.Forbidden(refused.getMessage)) }
   
   /**
    * The action for HTML requests that fail.
    */
-  val onInternalServerError: Throwable => EssentialAction = { (exc) => Action(Results.InternalServerError(exc.getMessage)) },
+  def onInternalServerError: Throwable => EssentialAction = { (exc) => Action(Results.InternalServerError(exc.getMessage)) }
 
   /**
    * Maps failures to HTTP error codes. For instance, you may wish to register your UserError exceptions as BadRequest so
    * that they are not returned to the client as InternalServerError.
    */
-  val errorCodeMap:Map[Class[_], Int] = Map.empty
-)
+  def errorCodeMap:Map[Class[_], Int]
+}
 
 /**
  * Generates actions suitable for a "single-page app" style site, that communicates with the browser using JSON REST requests.
