@@ -148,8 +148,46 @@ class DataActionSpec extends PlaySpecification with Results {
       (status(result) must be equalTo 500) and
       (header("myHeader", result) must be equalTo Some("myValue"))
     }
-
     
+    "return a JSON error message if a many-JSON request fails to become ready" in new WithApplication(fakeApp) {
+      import FakeController._
+      
+      def method = DataAction.returning.manyJson { 
+        for {
+          a <- 1.itself
+          f <- RefFailed(new IllegalStateException("This request should fail to become ready")):Ref[String]
+          j <- Seq(Json.obj("a"->1), Json.obj("b"->2)).toRefMany
+        } yield j 
+      }
+      
+      val iteratee = method.apply(FakeRequest().withHeaders("Accept" -> "application/json"))
+      val result = Enumerator.eof |>>> iteratee
+      val body = contentAsString(result)
+      
+      (body must be equalTo Json.obj("error" -> "This request should fail to become ready").toString) and
+      (status(result) must be equalTo 500)
+    }
+
+    // TODO: By default we skip errors mid-sequence; but we should introduce the option not to
+    "skip failures in the middle of a sequence" in new WithApplication(fakeApp) {
+      import FakeController._
+      
+      def method = DataAction.returning.manyJson { 
+        for {
+          i <- Seq(1, 2, 3, 4).toRefMany
+          even <- if (i % 2 == 0) true.itself else RefFailed(new IllegalArgumentException("odd"))
+        } yield Json.obj("even" -> even)
+      }
+      
+      val iteratee = method.apply(FakeRequest().withHeaders("Accept" -> "application/json"))
+      val result = Enumerator.eof |>>> iteratee
+      val body = unChunk(result)
+      
+      (body must be equalTo Json.arr(
+        Json.obj("even" -> true), Json.obj("even" -> true)
+      ).toString) and
+      (status(result) must be equalTo 200)
+    }
   }
   
 }

@@ -146,17 +146,13 @@ object Ref {
   def apply[T](opt: Option[T]) = fromOptionItem(opt)
   
   /**
-   * Sometimes we actually do want Ref[Option[T]]
-   * 
-   * The reason is that in a for comprehension
-   *   for (a <- Ref[T], b <- funcThatTakesAnOption(...)) yield ...  
-   * we can't get None to pass into the function for b. So instead we do this:
-   *   for (optA <- optionally(Ref[T]), b <- funcThatTakesAnOption(optA)) yield ...  
-   * 
-   * This happens, for instance, when dealing with anonymous readers -- once the
-   * reader has been resolved it might still be None 
+   * Converts a Ref[T] to a Ref[Option[T]]; by default RefFailed becomes None.itself, however 
+   * that can be changed by passing a different recoverWith function.
    */
-  def optionally[T](r:Ref[T]) = r.map(Some(_)) orIfNone None.itself    
+  def optionally[T](r:Ref[T], recoverWith: PartialFunction[Throwable, Ref[T]] = PartialFunction.apply { x:Throwable => RefNone }):Ref[Option[T]] = {
+    r recoverWith(recoverWith) map(Some(_)) orIfNone None.itself
+  }
+  
 }
 
 
