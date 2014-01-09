@@ -76,6 +76,15 @@ case class RefFailed(exception: Throwable) extends RefNothing {
   def onReady[U](onSuccess: RefMany[Nothing] => U, onNone: => U, onFail: Throwable => U) { onFail(exception) }  
 }
 
+object RefFailed {
+  
+  import scala.language.implicitConversions
+  
+  /** Implicitly promote exceptions to failures */
+  implicit def promote(exception: Throwable) = apply(exception)
+  
+}
+
 /**
  * Singleton to say there's nothing there.
  */
