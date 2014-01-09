@@ -47,7 +47,7 @@ object DataActionSpec {
       Seq(Thing("one"), Thing("two"), Thing("three")).toRefMany
     }
     
-    def jsonWithHeader = DataAction.returning.json { 
+    def jsonWithHeader = DataAction.returning.jsonWH { 
       WithHeaderInfo(
         data = Json.obj("text" -> "json").itself,
         headerInfo = HeaderInfo(headers=Seq("myHeader" -> "myValue")).itself
@@ -58,7 +58,7 @@ object DataActionSpec {
       new RefFailed(new IllegalStateException("This is a deliberate error"))
     }
     
-    def jsonFailsWithHeader = DataAction.returning.json { 
+    def jsonFailsWithHeader = DataAction.returning.jsonWH { 
       WithHeaderInfo(
         data = new RefFailed(new IllegalStateException("This is a deliberate error")),
         headerInfo = HeaderInfo(headers=Seq("myHeader" -> "myValue")).itself

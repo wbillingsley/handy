@@ -179,32 +179,36 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
   /**
    * An action returning a Result
    */
-  def result(block: AppbaseRequest[AnyContent, U] => WithHeaderInfo[Ref[SimpleResult]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
+  def resultWH(block: AppbaseRequest[AnyContent, U] => WithHeaderInfo[Ref[SimpleResult]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
     val wrapped = new AppbaseRequest(request)
     refSimpleResultToIteratee(wrapped, block(wrapped))
-  }  
+  }
+
+  def result(block: AppbaseRequest[AnyContent, U] => Ref[SimpleResult]) = resultWH(block.andThen(WithHeaderInfo(_)))
 
   
   /**
    * An action returning a Result
    */
-  def result(block: => WithHeaderInfo[Ref[SimpleResult]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request => 
+  def resultWH(block: => WithHeaderInfo[Ref[SimpleResult]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request => 
     val wrapped = new AppbaseRequest(request)
     refSimpleResultToIteratee(wrapped, block)
   }
+  def result(block: => Ref[SimpleResult]) = resultWH { WithHeaderInfo(block) }
   
   /**
    * An action returning a Result
    */
-  def result[A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => WithHeaderInfo[Ref[SimpleResult]]) = BodyAction(bodyParser) { implicit request => 
+  def resultWH[A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => WithHeaderInfo[Ref[SimpleResult]]) = BodyAction(bodyParser) { implicit request => 
     val wrapped = new AppbaseRequest(request)
     refSimpleResultToIteratee(wrapped, block(wrapped))
   }
+  def result[A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => Ref[SimpleResult]) = resultWH(bodyParser)(block.andThen(WithHeaderInfo(_))) 
   
   /**
-   * An action returning a Result
+   * An action returning JSON, with header information for the request
    */
-  def json(block: AppbaseRequest[AnyContent, U] => WithHeaderInfo[Ref[JsValue]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request => 
+  def jsonWH(block: AppbaseRequest[AnyContent, U] => WithHeaderInfo[Ref[JsValue]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request => 
     request match {
       case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
@@ -215,11 +219,17 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
       }
     }
   }
-    
+
   /**
-   * An action returning a Result
+   * An action returning JSON
    */
-  def json(block: => WithHeaderInfo[Ref[JsValue]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request => 
+  def json(block: AppbaseRequest[AnyContent, U] => Ref[JsValue]) = jsonWH(block.andThen(WithHeaderInfo(_)))
+
+  
+  /**
+   * An action returning JSON, with header information for the request
+   */
+  def jsonWH(block: => WithHeaderInfo[Ref[JsValue]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request => 
     request match {
       case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
@@ -232,9 +242,15 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
   }
   
   /**
-   * An action returning a Result
+   * An action returning JSON
    */
-  def json[A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => WithHeaderInfo[Ref[JsValue]]) = BodyAction(bodyParser) { implicit request =>
+  def json(block: => Ref[JsValue]) = jsonWH { WithHeaderInfo(block) }
+
+  
+  /**
+   * An action returning JSON, with header information for the request
+   */
+  def jsonWH[A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => WithHeaderInfo[Ref[JsValue]]) = BodyAction(bodyParser) { implicit request =>
     request match {
       case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
@@ -246,11 +262,15 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
     }
   }    
   
-  
   /**
-   * An action returning a single item that can be converted into JSON for the requesting user
+   * An action returning JSON
    */
-  def one[T](block: => WithHeaderInfo[Ref[T]])(implicit jc:JsonConverter[T, U]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
+  def json[A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => Ref[JsValue]) = jsonWH(bodyParser)(block.andThen(WithHeaderInfo(_)))
+
+  /**
+   * An action returning a single item that can be converted into JSON for the requesting user, with header information for the request
+   */
+  def oneWH[T](block: => WithHeaderInfo[Ref[T]])(implicit jc:JsonConverter[T, U]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
     request match {
       case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
@@ -265,11 +285,16 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
     }    
   }  
   
-
   /**
    * An action returning a single item that can be converted into JSON for the requesting user
    */
-  def one[T](block: AppbaseRequest[AnyContent, U] => WithHeaderInfo[Ref[T]])(implicit jc:JsonConverter[T, U]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
+  def one[T](block: => Ref[T])(implicit jc:JsonConverter[T, U]) = oneWH(WithHeaderInfo(block))(jc)
+
+
+  /**
+   * An action returning a single item that can be converted into JSON for the requesting user, with header information for the request
+   */
+  def oneWH[T](block: AppbaseRequest[AnyContent, U] => WithHeaderInfo[Ref[T]])(implicit jc:JsonConverter[T, U]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
 	request match {
       case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
@@ -284,11 +309,16 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
     }     
   }
 
+  /**
+   * An action returning a single item that can be converted into JSON for the requesting user, with header information for the request
+   */
+  def one[T](block: AppbaseRequest[AnyContent, U] => Ref[T])(implicit jc:JsonConverter[T, U]) = oneWH(block.andThen(WithHeaderInfo(_)))(jc)
+
 
   /**
    * An action returning a single item that can be converted into JSON for the requesting user
    */
-  def one[T, A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => WithHeaderInfo[Ref[T]])(implicit jc:JsonConverter[T, U]) = BodyAction(bodyParser) { implicit request =>
+  def oneWH[T, A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => WithHeaderInfo[Ref[T]])(implicit jc:JsonConverter[T, U]) = BodyAction(bodyParser) { implicit request =>
 	request match {
       case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
@@ -303,11 +333,15 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
     }         
   }
   
+  /**
+   * An action returning a single item that can be converted into JSON for the requesting user
+   */
+  def one[T, A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => Ref[T])(implicit jc:JsonConverter[T, U]) = oneWH(bodyParser)(block.andThen(WithHeaderInfo(_)))(jc)
   
   /**
-   * An action returning a many items that can be converted into JSON for the requesting user
+   * An action returning a many items that can be converted into JSON for the requesting user, with header information for the request
    */
-  def many[T](block: => WithHeaderInfo[RefMany[T]])(implicit jc:JsonConverter[T, U]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
+  def manyWH[T](block: => WithHeaderInfo[RefMany[T]])(implicit jc:JsonConverter[T, U]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
 	request match {
       case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
@@ -318,11 +352,17 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
       }
     }    
   }  
-  
+
   /**
    * An action returning a many items that can be converted into JSON for the requesting user
    */
-  def many[T](block: AppbaseRequest[AnyContent, U] => WithHeaderInfo[RefMany[T]])(implicit jc:JsonConverter[T, U]) =  BodyAction(BodyParsers.parse.anyContent) { implicit request =>
+  def many[T](block: => RefMany[T])(implicit jc:JsonConverter[T, U]) = manyWH(WithHeaderInfo(block))(jc)
+
+  
+  /**
+   * An action returning a many items that can be converted into JSON for the requesting user, with header information for the request
+   */
+  def manyWH[T](block: AppbaseRequest[AnyContent, U] => WithHeaderInfo[RefMany[T]])(implicit jc:JsonConverter[T, U]) =  BodyAction(BodyParsers.parse.anyContent) { implicit request =>
 	request match {
       case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
@@ -332,12 +372,18 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
         refManyJsonToIteratee(wrapped, WithHeaderInfo(json, whi.headerInfo))
       }
     }     
-  }  
+  }
   
   /**
    * An action returning a many items that can be converted into JSON for the requesting user
    */
-  def many[T, A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => WithHeaderInfo[RefMany[T]])(implicit jc:JsonConverter[T, U]) = BodyAction(bodyParser) { implicit request =>
+  def many[T](block: AppbaseRequest[AnyContent, U] => RefMany[T])(implicit jc:JsonConverter[T, U]) = manyWH(block.andThen(WithHeaderInfo(_)))(jc)
+
+  
+  /**
+   * An action returning a many items that can be converted into JSON for the requesting user, with header information for the request
+   */
+  def manyWH[T, A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => WithHeaderInfo[RefMany[T]])(implicit jc:JsonConverter[T, U]) = BodyAction(bodyParser) { implicit request =>
 	request match {
       case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
@@ -352,7 +398,13 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
   /**
    * An action returning a many items that can be converted into JSON for the requesting user
    */
-  def manyJson(block: => WithHeaderInfo[RefMany[JsValue]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
+  def many[T, A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => RefMany[T])(implicit jc:JsonConverter[T, U]) = manyWH(bodyParser)(block.andThen(WithHeaderInfo(_)))(jc)
+
+  
+  /**
+   *  An action returning a many JSON values, with header information for the request
+   */
+  def manyJsonWH(block: => WithHeaderInfo[RefMany[JsValue]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
     request match {
       case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
@@ -362,11 +414,17 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
       }
     }    
   }  
+
+  /**
+   * An action returning a many JSON values
+   */
+  def manyJson(block: => RefMany[JsValue]) = manyJsonWH(WithHeaderInfo(block))
+
   
   /**
-   * An action returning a many items that can be converted into JSON for the requesting user
+   * An action returning a many JSON values, with header information for the request
    */
-  def manyJson(block: AppbaseRequest[AnyContent, U] => WithHeaderInfo[RefMany[JsValue]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
+  def manyJsonWH(block: AppbaseRequest[AnyContent, U] => WithHeaderInfo[RefMany[JsValue]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
     request match {
       case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
@@ -378,9 +436,14 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
   }  
   
   /**
-   * An action returning a many items that can be converted into JSON for the requesting user
+   * An action returning a many JSON values
    */
-  def manyJson[A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => WithHeaderInfo[RefMany[JsValue]]) = BodyAction(bodyParser) { implicit request =>
+  def manyJson(block: AppbaseRequest[AnyContent, U] => RefMany[JsValue]) = manyJsonWH(block.andThen(WithHeaderInfo(_)))
+
+  /**
+   * An action returning a many JSON values, with header information for the request
+   */
+  def manyJsonWH[A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => WithHeaderInfo[RefMany[JsValue]]) = BodyAction(bodyParser) { implicit request =>
     request match {
       case Accepts.Html() => config.homeAction(request)
       case Accepts.Json() => {
@@ -390,6 +453,12 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
       }
     }
   }   
+
+  /**
+   * An action returning a many JSON values
+   */
+  def manyJson[A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => RefMany[JsValue]) = manyJsonWH(bodyParser)(block.andThen(WithHeaderInfo(_)))
+
 }
 
 
