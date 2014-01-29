@@ -46,10 +46,16 @@ object RefManyById {
     
     override def lookUpMany[KK <: Any](r:RefManyById[T,KK]) = RefNone
   }
-  
-  def empty[T] = {
+
+  /**
+   * An empty RefMany that always resolves to nothing.
+   *
+   * Note that it takes two type parameters as RefManyById is invariant in K (so we can't just
+   * return a RefManyById[T, Any]
+   */
+  def empty[T,K] = {
     val nada = LooksUpNothing[T]
-    new RefManyById(Seq.empty,nada, nada)
+    new RefManyById[T,K](Seq.empty,nada, nada)
   }
 
   class JustType[T] {
