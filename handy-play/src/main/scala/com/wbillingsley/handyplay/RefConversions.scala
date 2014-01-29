@@ -3,14 +3,13 @@ package com.wbillingsley.handyplay
 import com.wbillingsley.handy._
 import Ref._
 import play.api.libs.iteratee._
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 object RefConversions {
 
   implicit class EnumerateRefMany[T](val rm: RefMany[T]) {
-    implicit val ec = RefFuture.executionContext
-    
-    def enumerate:Enumerator[T] = rm match {
+
+    def enumerate(implicit executionContext:ExecutionContext):Enumerator[T] = rm match {
       case re:RefEnumerator[T] => re.enumerator
       case rei:RefEnumIter[T] => rei.enumerator.flatMap(trav => Enumerator.enumerate(trav))
 
@@ -18,22 +17,20 @@ object RefConversions {
         def apply[A](it: Iteratee[T, A]) = {
           import com.wbillingsley.handy.Ref._
           val res = rm.fold(it) { (it, el) => Iteratee.flatten(it.feed(Input.El(el))) }
-          res.toFuture.map(_.getOrElse(it))(RefFuture.executionContext)
+          res.toFutOpt.map(_.getOrElse(it))(RefFuture.executionContext)
         }
       }
     }
     
-    def enumerateR:Ref[Enumerator[T]] = rm whenReady { _.enumerate }
+    def enumerateR(implicit executionContext:ExecutionContext):Ref[Enumerator[T]] = rm whenReady { _.enumerate }
   }
   
   
   implicit class EnumerateRef[T](val r:Ref[T]) {
 
-    def enumerate = {
+    def enumerate(implicit executionContext:ExecutionContext) = {
       new Enumerator[T] {
         def apply[A](it: Iteratee[T, A]) = {
-          
-          import RefFuture.executionContext
 
           r match {
             case RefItself(item) => {

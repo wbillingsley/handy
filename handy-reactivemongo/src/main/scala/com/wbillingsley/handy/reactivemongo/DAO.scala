@@ -7,6 +7,7 @@ import reactivemongo.core.commands.GetLastError
 import com.wbillingsley.handy._
 import com.wbillingsley.handyplay._
 import Ref._
+import scala.concurrent.ExecutionContext
 
 trait DAO {
   
@@ -21,7 +22,7 @@ trait DAO {
     def lookUpMany[K <: String](r:RefManyById[DataT, K]) = manyById(r.rawIds)
     
   }
-  
+
   /**
    * A reference to the class object for the type this retrieves.
    * Used because the generic type is erased, but at runtime we need to know the
@@ -49,6 +50,11 @@ trait DAO {
    * Converts from BSON to the transfer object
    */
   implicit val bsonReader:BSONDocumentReader[DataT];
+
+  /**
+   * The execution context (ie, thread pool) that futures should be created on.
+   */
+  implicit def executionContext:ExecutionContext;
   
   /**
    * Implicit conversion that allows Ref[_] to be written as BSON

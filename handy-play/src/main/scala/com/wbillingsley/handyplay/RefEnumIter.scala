@@ -2,14 +2,13 @@ package com.wbillingsley.handyplay
 
 import com.wbillingsley.handy._
 import play.api.libs.iteratee._
-import scala.concurrent.Await
+import scala.concurrent.{ExecutionContext, Await, Future}
 import scala.concurrent.duration._
-import scala.concurrent.Future
 
 /**
  * A Ref that takes an Enumerator
  */
-class RefEnumIter[T](val enumerator:Enumerator[Iterator[T]]) extends RefMany[T] {
+class RefEnumIter[T](val enumerator:Enumerator[Iterator[T]])(implicit val executionContext:ExecutionContext) extends RefMany[T] {
   
   import RefFuture.executionContext
   

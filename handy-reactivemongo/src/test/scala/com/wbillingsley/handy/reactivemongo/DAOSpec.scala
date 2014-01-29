@@ -24,7 +24,9 @@ object DAOSpec {
     val collName = "thing"
       
     val db = testdb
-    
+
+    val executionContext = scala.concurrent.ExecutionContext.Implicits.global
+
     def unsaved = Thing("")
     
     val bsonReader = new BSONDocumentReader[Thing] {
@@ -45,6 +47,8 @@ object DAOSpec {
     val collName = "thing"
       
     val db = testdb
+
+    val executionContext = scala.concurrent.ExecutionContext.Implicits.global
     
     def unsaved = Other("")
     

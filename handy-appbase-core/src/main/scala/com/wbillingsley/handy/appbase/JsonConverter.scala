@@ -7,6 +7,7 @@ import play.api.libs.iteratee.Enumerator
 import com.wbillingsley.handy.Approval.wrapApproval
 import play.api.libs.functional.syntax.toFunctionalBuilderOps
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
+import scala.concurrent.ExecutionContext
 
 trait JsonConverter[T, U] {
     
@@ -38,7 +39,7 @@ object JsonConverter {
    * Useful for putting the commas in the right place when Enumerating JSON as a string
    */
   implicit class StringifyJson(val en: Enumerator[JsObject]) extends AnyVal {
-    def stringify = {
+    def stringify(implicit ec:ExecutionContext) = {
       var sep = ""
       for (j <- en) yield {
         val s = sep + j.toString
@@ -53,7 +54,7 @@ object JsonConverter {
    * We have both this and StringifyJson because Enumerator[T] is invariant on T
    */
   implicit class StringifyJsValue[J <: JsValue](val en: Enumerator[J]) extends AnyVal {
-    def stringify = {
+    def stringify(implicit ec:ExecutionContext) = {
       var sep = ""
       for (j <- en) yield {
         val s = sep + j.toString

@@ -156,7 +156,7 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
     } yield withHeaders
     
     // Convert the Ref[Iteratee[...]] to a Future[Iteratee[...]]
-    val futModified = refModified.toFuture.map(_.getOrElse(doneIteratee(
+    val futModified = refModified.toFutOpt.map(_.getOrElse(doneIteratee(
       Results.InternalServerError("Error inside DataAction library: We handled the 'none' case but still there was nothing")
     )))
     
