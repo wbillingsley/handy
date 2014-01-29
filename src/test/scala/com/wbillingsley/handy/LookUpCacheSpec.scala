@@ -16,7 +16,7 @@ class LookUpCacheSpec extends Specification {
       import DB._
       
       val a = for (p <- cache(LazyId(1)[Page])) yield p.id
-      a.toFuture must be_==(Some(1)).await
+      a.toFutOpt must be_==(Some(1)).await
     }    
       
     "find assignable items in the cache" in {

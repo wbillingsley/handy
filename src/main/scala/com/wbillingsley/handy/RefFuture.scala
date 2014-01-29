@@ -11,10 +11,10 @@ object RefFuture {
   /**
    * The execution context that new RefFuture
    */
-  implicit var executionContext:ExecutionContext = ExecutionContext.Implicits.global
+  var executionContext:ExecutionContext = ExecutionContext.Implicits.global
 }
 
-class RefFuture[+T](val future: Future[T], implicit val executionContext:ExecutionContext = RefFuture.executionContext) extends Ref[T] {
+class RefFuture[+T](val future: Future[T])(implicit val executionContext:ExecutionContext) extends Ref[T] {
   
   def getId[TT >: T, KK](implicit g:GetsId[TT, KK]) = fetch.getId(g)
   
@@ -90,7 +90,7 @@ class RefFuture[+T](val future: Future[T], implicit val executionContext:Executi
 }
 
 
-class RefFutureRef[+T](val futureRef: Future[Ref[T]], implicit val executionContext:ExecutionContext = RefFuture.executionContext) extends Ref[T] {
+class RefFutureRef[+T](val futureRef: Future[Ref[T]])(implicit val executionContext:ExecutionContext = RefFuture.executionContext) extends Ref[T] {
   
   def getId[TT >: T, KK](implicit g:GetsId[TT, KK]) = fetch.getId(g)
   
@@ -151,7 +151,7 @@ class RefFutureRef[+T](val futureRef: Future[Ref[T]], implicit val executionCont
 }
 
 
-class RefFutureRefMany[+T](val futureRef: Future[RefMany[T]], implicit val executionContext:ExecutionContext = RefFuture.executionContext) extends RefMany[T] {
+class RefFutureRefMany[+T](val futureRef: Future[RefMany[T]])(implicit val executionContext:ExecutionContext = RefFuture.executionContext) extends RefMany[T] {
   
   def isEmpty = fetch.isEmpty
   
@@ -196,7 +196,7 @@ class RefFutureRefMany[+T](val futureRef: Future[RefMany[T]], implicit val execu
 }
 
 
-class RefFutureOption[+T](val future: Future[Option[T]], implicit val executionContext:ExecutionContext = RefFuture.executionContext) extends Ref[T] {
+class RefFutureOption[+T](val future: Future[Option[T]])(implicit val executionContext:ExecutionContext = RefFuture.executionContext) extends Ref[T] {
   
   def getId[TT >: T, KK](implicit g:GetsId[TT, KK]) = fetch.getId(g)
   

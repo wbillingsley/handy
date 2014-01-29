@@ -18,8 +18,9 @@ Copyright (C) 2012 William Billingsley
 */
 package com.wbillingsley.handy
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.language.higherKinds
+import java.util.NoSuchElementException
 
 /**
  * RefCanFlatMapTo. The flatMap method is designed to take an implicit
@@ -105,7 +106,7 @@ object Ref {
   }  
   
   implicit class futToRef[T](val underlying: Future[T]) extends AnyVal {
-	def toRef = new RefFuture(underlying)  
+    def toRef(implicit ec:ExecutionContext) = new RefFuture(underlying)(ec)
   }  
   
   implicit class optToRef[T](val underlying: Option[T]) extends AnyVal {
@@ -197,11 +198,23 @@ trait Ref[+T] extends RSuper[T] {
   def getId[TT >: T, K](implicit g:GetsId[TT, K]):Option[K] 
   
   def sameId[TT >: T](other: Ref[TT])(implicit g:GetsId[TT, _]) = getId(g) == other.getId(g)
-  
+
+  def toFuture = {
+    import scala.concurrent._
+
+    val p = promise[T]
+    this onComplete(
+      onSuccess = p success _,
+      onNone = p failure new NoSuchElementException(),
+      onFail = p failure _
+      )
+    p.future
+  }
+
   /**
    * Converts this Ref to a Future[Option[T]] that might or might not immediately complete.
    */
-  def toFuture:Future[Option[T]] = {
+  def toFutOpt:Future[Option[T]] = {
     import scala.concurrent._
     
     val p = promise[Option[T]]
