@@ -5,7 +5,7 @@ import Ref._
 /**
  * Refers to many items by their ID.
  */
-case class RefManyById[T, K](val clazz : scala.Predef.Class[T], val rawIds: Seq[K])(implicit lookUpMany:LookUpMany[T, K], val lookUpOne:LookUpOne[T, K]) extends RefMany[T] {
+case class RefManyById[T, K](val rawIds: Seq[K], lookUpMany:LookUpMany[T, K], lookUpOne:LookUpOne[T, K]) extends RefMany[T] {
   
   def getIds[TT >: T, KK](implicit g:GetsId[TT, KK]) = {
 	for (i <- rawIds; c <- g.canonical(i)) yield c
@@ -13,7 +13,7 @@ case class RefManyById[T, K](val clazz : scala.Predef.Class[T], val rawIds: Seq[
   
   def lookUp = lookUpMany.lookUpMany(this)
   
-  def first = Ref.fromOptionId(clazz, rawIds.headOption)(lookUpOne)
+  def first = Ref.fromOptionId(rawIds.headOption)(lookUpOne)
   
   def fetch = lookUp.fetch
     
@@ -38,17 +38,32 @@ case class RefManyById[T, K](val clazz : scala.Predef.Class[T], val rawIds: Seq[
 }
 
 object RefManyById {
+
+  def apply[T,K](rawIds:Seq[K], lookUp:LookUp[T, K]):RefManyById[T,K] = apply(rawIds, lookUp, lookUp)
   
-  def LooksUpNothing[T, K] = new LookUp[T, K] {
-    override def lookUpOne(r:RefById[T,K]) = RefNone
+  def LooksUpNothing[T] = new LookUp[T, Any] {
+    override def lookUpOne[KK <: Any](r:RefById[T,KK]) = RefNone
     
-    override def lookUpMany(r:RefManyById[T,K]) = RefNone
+    override def lookUpMany[KK <: Any](r:RefManyById[T,KK]) = RefNone
   }
   
-  def empty[T, K](clazz: scala.Predef.Class[T]) = {
-    val nada = LooksUpNothing[T, K]
-    new RefManyById(clazz, Seq.empty)(nada, nada)
+  def empty[T] = {
+    val nada = LooksUpNothing[T]
+    new RefManyById(Seq.empty,nada, nada)
   }
+
+  class JustType[T] {
+    def apply[K](ids: Seq[K])(implicit lookUpMethod:LookUp[T, K]) = RefManyById(ids, lookUpMethod)
+  }
+
+  def of[T] = new JustType[T]
+
+  class JustId[K](val ids: Seq[K]) extends AnyVal {
+    def apply[T](implicit lookUpMethod:LookUp[T, K]) = RefManyById(ids, lookUpMethod)
+    def of[T](implicit lookUpMethod:LookUp[T, K]) = apply(lookUpMethod)
+  }
+
+  def apply[K](ids: Seq[K]) = new JustId(ids)
   
 }
 
@@ -57,8 +72,8 @@ object RefManyById {
  * This has to be a trait, rather than just a function because a RefManyById[T, K] is already a RefMany[T].
  * Which means that if it was just a function, then Predef.conforms would be implicitly found.
  */
-trait LookUpMany[T, K] {
-  def lookUpMany(r:RefManyById[T, K]):RefMany[T]
+trait LookUpMany[T, -K] {
+  def lookUpMany[KK <: K](r:RefManyById[T, KK]):RefMany[T]
 }
 
-trait LookUp[T, K] extends LookUpMany[T, K] with LookUpOne[T, K]
+trait LookUp[T, -K] extends LookUpMany[T, K] with LookUpOne[T, K]

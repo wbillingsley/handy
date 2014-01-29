@@ -3,74 +3,59 @@ package com.wbillingsley.handy
 import scala.collection.concurrent.TrieMap
 
 /**
- * A mutable cache for Refs
+ * A concurrent mutable cache for LazyIds. 
  */
 class LookUpCache {
   
-  val cache = TrieMap.empty[Any, List[(Class[_], Ref[_])]]
+  /*
+   * A mutable map of LazyId[T, K] to Ref[T] for any T.
+   * 
+   * The store method maintains this constraint.
+   */
+  private val cache = TrieMap.empty[LazyId[_, _], Ref[_]]
   
-  def cacheLookup[T, K, KK](rbi: RefById[T, K])(implicit g: GetsId[T, KK]):Ref[T] = {    
-    rbi.getId match {
-      case Some(id) => { 
-        find(rbi.clazz, id).getOrElse({
-          val l = rbi.lookUp
-          remember(rbi.clazz, l)
-          l 
-        })
-      }
-      case None => rbi
-    }
+  private def find[T, K](l:LazyId[T, K]):Option[Ref[T]] = {    
+    val tup = cache.get(l)
+    
+    // Note that the store method maintained the constraint in T
+    tup map { _.asInstanceOf[Ref[T]] }
   }
   
-  def cacheLookup[T, K, KK](li: LazyId[T, K])(implicit g: GetsId[T, KK]):Ref[T] = {    
-    li.getId match {
-      case Some(id) => { 
-        find(li.rbi.clazz, id).getOrElse({
-          remember(li.rbi.clazz, li)
-          li
-        })
-      }
-      case None => li
-    }
+  private def store[T, K](l:LazyId[T, K], r:Ref[T]) = {    
+    cache.put(l, r)
+    r
   }  
   
-  private def find[T](clazz:Class[T], id:Any):Option[Ref[T]] = {    
-    val list = cache.getOrElse(id, Nil)        
-    val tup = list.find { clazz isAssignableFrom _._1 }
-    tup map { _._2.asInstanceOf[Ref[T]] }
-  }  
+  def lookUp[T, K, KK](rbi: RefById[T, K]):Ref[T] = {    
+    lookUp(LazyId(rbi.id)(rbi.lookUpMethod))
+  }
   
-  def remember[T, KK](clazz: Class[_], r:Ref[T])(implicit g: GetsId[T, KK]) = {
+  def lookUp[T, K, KK](li: LazyId[T, K]):Ref[T] = {    
+    find(li).getOrElse(store(li, li))
+  }  
+    
+  def remember[T, KK](r:Ref[T])(implicit g: GetsId[T, KK], lu:LookUpOne[T, KK]) = {
     r.getId match {
-      case Some(id) => {
-        import scala.language.existentials
-        
-        val l = (clazz, r) :: cache.getOrElse(id, Nil)
-        cache.put(id, l)
-        r
-      }
+      case Some(id) => store(LazyId(id)(lu), r)
       case None => r
     }
   }
   
-  def apply[T, TT >: T, KK](r: Ref[T], clazz:Class[TT])(implicit g: GetsId[T, KK]):Ref[T] = {
+  def apply[T, KK](r: Ref[T])(implicit g: GetsId[T, KK], lu:LookUpOne[T, KK]):Ref[T] = {
     r match {
-      case rbi:RefById[T, _] => cacheLookup(rbi)
-      case li:LazyId[T, _] => cacheLookup(li)
-      case r:Ref[T] => remember(clazz, r)
+      case rbi:RefById[T, _] => lookUp(rbi)
+      case li:LazyId[T, _] => lookUp(li)
+      case r:Ref[T] => remember(r)
     }
   }  
 
   def apply[T, TT >: T, K, KK](rbi: RefById[T, K])(implicit g: GetsId[T, KK]):Ref[T] = {
-	cacheLookup(rbi)
+    lookUp(rbi)
   }
 
   def apply[T, TT >: T, K, KK](li: LazyId[T, K])(implicit g: GetsId[T, KK]):Ref[T] = {
-	cacheLookup(li)
+    lookUp(li)
   }
   
-  def apply[T, KK](ri: RefItself[T])(implicit g: GetsId[T, KK]):Ref[T] = {
-	remember(ri.item.getClass, ri)
-  }
   
 }

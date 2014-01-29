@@ -8,10 +8,10 @@ import scala.language.higherKinds
  * clazz is kept because it will be needed at run-time by the lookUp method (to know which class to look 
  * up in the database)
  */
-case class RefById[T, K](clazz : scala.Predef.Class[T], id: K)(implicit val lookUpMethod:LookUpOne[T, K]) extends Ref[T] with UnresolvedRef[T] {
+case class RefById[T, K](val id: K, val lookUpMethod:LookUpOne[T, K]) extends Ref[T] with UnresolvedRef[T] {
     
   def getId[TT >: T, KK](implicit g:GetsId[TT, KK]) = {
-	g.canonical(id)
+    g.canonical(id)
   }  
 
   def lookUp = lookUpMethod.lookUpOne(this)
@@ -66,11 +66,33 @@ case class RefById[T, K](clazz : scala.Predef.Class[T], id: K)(implicit val look
   
 }
 
+object RefById {
+  
+  class JustType[T] {
+    def apply[K](id: K)(implicit lookUpMethod:LookUpOne[T, K]) = new RefById[T, K](id, lookUpMethod)
+  }
+  
+  def of[T] = new JustType[T]
+
+  class JustId[K](val id:K) extends AnyVal {
+    def apply[T](implicit lookUpMethod:LookUpOne[T, K]) = new RefById(id, lookUpMethod)
+
+    def of[T](implicit lookUpMethod:LookUpOne[T, K]) = apply(lookUpMethod)
+  }
+
+  def apply[K](id:K) = new JustId(id)
+
+}
+
 
 /**
  * This has to be a trait, rather than just a function because a RefManyById[T, K] is already a RefMany[T].
  * Which means that if it was just a function, then Predef.conforms would be implicitly found.
+ *
+ * It also has to be invariant in T because two RefByIds are equal if they have the same Id and LookUpMethod
+ *
+ * It is covariant in K so that a LookUp[Foo, Any] can be used in place of a LookUp[Foo, String]
  */
-trait LookUpOne[T, K] {
-  def lookUpOne(r:RefById[T, K]):Ref[T] 
+trait LookUpOne[T, -K] {
+  def lookUpOne[KK <: K](r:RefById[T, KK]):Ref[T]
 }

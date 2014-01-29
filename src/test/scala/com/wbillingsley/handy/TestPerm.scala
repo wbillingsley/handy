@@ -24,9 +24,9 @@ object TestPerm {
   // To ensure we're not actually making a lookup, we define it here so it would always fail
   implicit def LookupAlwaysFails[T, K] = new LookUp[T, K] {
     
-    def lookUpOne(r:RefById[T,K]) = RefNone
+    def lookUpOne[KK <: K](r:RefById[T,KK]) = RefNone
     
-    def lookUpMany(r:RefManyById[T,K]) = RefNone
+    def lookUpMany[KK <: K](r:RefManyById[T,KK]) = RefNone
     
   }
   
@@ -58,14 +58,14 @@ class TestPerm {
     val foo1 = Foo(1)
     val foo2 = Foo(2)
     
-    assertEquals(true, FooPerm(foo1.itself) == FooPerm(RefById(classOf[Foo], 1)))
-    assertEquals(true, FooPerm(RefById(classOf[Foo], 1)) == FooPerm(foo1.itself) )
+    assertEquals(true, FooPerm(foo1.itself) == FooPerm(RefById.of[Foo](1)))
+    assertEquals(true, FooPerm(RefById.of[Foo](1)) == FooPerm(foo1.itself) )
     
     
-    assertEquals(false, FooPerm(foo1.itself) == FooPerm(RefById(classOf[Foo], 2)))
-    assertEquals(false, FooPerm(RefById(classOf[Foo], 2)) == FooPerm(foo1.itself))
+    assertEquals(false, FooPerm(foo1.itself) == FooPerm(RefById.of[Foo](2)))
+    assertEquals(false, FooPerm(RefById.of[Foo](2)) == FooPerm(foo1.itself))
     
-    assertEquals(false, FooPerm(foo1.itself) == BarPerm(RefById(classOf[Bar], 1)))
+    assertEquals(false, FooPerm(foo1.itself) == BarPerm(RefById.of[Bar](1)))
          
   }
   

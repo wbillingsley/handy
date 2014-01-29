@@ -3,9 +3,9 @@ package com.wbillingsley.handy
 /**
  * A Ref by id, that uses a lazy val to cache the result of looking it up
  */
-class LazyId [T, K](clazz : scala.Predef.Class[T], id: K)(implicit val lookUpMethod:LookUpOne[T, K]) extends Ref[T] {
+case class LazyId [T, K](id: K, lookUpMethod:LookUpOne[T, K]) extends Ref[T] {
 
-  val rbi = RefById(clazz, id)(lookUpMethod)
+  val rbi = new RefById(id, lookUpMethod)
   
   lazy val lookUp = rbi.lookUp
   
@@ -36,4 +36,21 @@ class LazyId [T, K](clazz : scala.Predef.Class[T], id: K)(implicit val lookUpMet
   def recoverWith[B >: T](pf: PartialFunction[Throwable, Ref[B]]) = lookUp.recoverWith(pf)
   
   def withFilter(p: T => Boolean) = lookUp.withFilter(p)  
+}
+
+object LazyId {
+
+  class JustType[T] {
+    def apply[K](id: K)(implicit lookUpMethod:LookUpOne[T, K]) = new LazyId[T, K](id, lookUpMethod)
+  }
+
+  def of[T] = new JustType[T]
+
+  class JustId[K](val id:K) extends AnyVal {
+    def apply[T](implicit lookUpMethod:LookUpOne[T, K]) = new LazyId(id, lookUpMethod)
+    def of[T](implicit lookUpMethod:LookUpOne[T, K]) = apply(lookUpMethod)
+  }
+
+  def apply[K](id:K) = new JustId(id)
+
 }

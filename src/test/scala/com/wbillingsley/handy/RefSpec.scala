@@ -15,13 +15,14 @@ object RefSpec extends Specification {
     val objMap = scala.collection.mutable.Map.empty[Long, TItem]
 
     implicit val lum = new LookUpOne[TItem, Long] {
-      def lookUpOne(r:RefById[TItem, Long]) = {
+      def lookUpOne[K <: Long](r:RefById[TItem, K]) = {
         objMap.get(r.id) match {
           case Some(x) => RefItself(x)
           case _ => RefNone 
         }
       }
     }
+
   }
   
   "Ref" should {
@@ -76,8 +77,8 @@ object RefSpec extends Specification {
       
       // import the implicit lookUp method
       import db.lum
-    
-      RefById(classOf[TItem], 1L).fetch must be equalTo RefItself(TItem(1, "one"))
+      val a = RefById(1L).apply[TItem]
+      a.fetch must be equalTo RefItself(TItem(1, "one"))
     }
 
     "support unsuccessful synchronous lookups" in {
@@ -90,8 +91,44 @@ object RefSpec extends Specification {
       // import the implicit lookUp method
       import db.lum
     
-      RefById(classOf[TItem], 2L).fetch must be equalTo RefNone
-    }    
+      RefById.of[TItem](2L).fetch must be equalTo RefNone
+    }
+
+    "implicitly find a lookup that takes a supertype of the key" in {
+
+      trait MyId {
+        def canonical:String
+      }
+      case class IntId(val k:Int) extends MyId {
+        def canonical = k.toString
+      }
+      case class StringId(val s:String) extends MyId {
+        def canonical = s
+      }
+
+      // a map with some dummy data
+      val objMap = scala.collection.mutable.Map("1" -> TItem(1L, "one"))
+
+      // a LookUp that accepts the superclass
+      implicit val lum = new LookUpOne[TItem, MyId] {
+        def lookUpOne[K <: MyId](r:RefById[TItem, K]) = {
+          objMap.get(r.id.canonical) match {
+            case Some(x) => RefItself(x)
+            case _ => RefNone
+          }
+        }
+      }
+
+      /*
+       * create refs using both notations. If these compile, the implicit has been found
+       */
+      val oneStr = RefById.of[TItem](StringId("1"))
+      val oneInt = RefById(IntId(1))[TItem]
+
+      // Just check they resolve the same
+      oneStr.fetch must be equalTo oneInt.fetch
+    }
+
   }
   
 

@@ -16,9 +16,9 @@ trait DAO {
   
   implicit object LookUp extends LookUp[DataT, String] {
     
-    def lookUpOne(r:RefById[DataT, String]) = byId(r.id)
+    def lookUpOne[K <: String](r:RefById[DataT, K]) = byId(r.id)
     
-    def lookUpMany(r:RefManyById[DataT, String]) = manyById(r.rawIds)
+    def lookUpMany[K <: String](r:RefManyById[DataT, K]) = manyById(r.rawIds)
     
   }
   

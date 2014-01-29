@@ -29,9 +29,9 @@ object DB {
    * We are resolving users synchronously, but pages as futures. That's just to show that the handy framework can cope!
    */
   implicit object User extends LookUp[User, Int] {
-    def lookUpOne(r:RefById[User, Int]) = Ref(userTable.get(r.id))
+    def lookUpOne[K <: Int](r:RefById[User, K]) = Ref(userTable.get(r.id))
     
-    def lookUpMany(r:RefManyById[User, Int]) = {
+    def lookUpMany[K <: Int](r:RefManyById[User, K]) = {
       (for {
         id <- r.rawIds
         u <- userTable.get(id)
@@ -43,9 +43,9 @@ object DB {
     import scala.concurrent._
     import ExecutionContext.Implicits.global    
     
-    def lookUpOne(r:RefById[Page, Int]) = new RefFuture( future { pageTable(r.id) } )
+    def lookUpOne[K <: Int](r:RefById[Page, K]) = new RefFuture( future { pageTable(r.id) } )
     
-    def lookUpMany(r:RefManyById[Page, Int]) = {
+    def lookUpMany[K <: Int](r:RefManyById[Page, K]) = {
       (for {
         id <- r.rawIds
         u <- pageTable.get(id)
@@ -56,7 +56,7 @@ object DB {
   case class DBUser(val id: Int, var name: String, var roles: Set[Role] = Set(Viewer)) extends User
   case class DBPage(val id: Int, var _createdBy: Option[Int], var content: String, var isPublic: Boolean) extends Page {
 
-    def createdBy = Ref.fromOptionId(classOf[User], _createdBy)
+    def createdBy = Ref.fromOptionId[User, Int](_createdBy)
 
     def createdBy_=(u: Ref[User]) {
       _createdBy = u.getId

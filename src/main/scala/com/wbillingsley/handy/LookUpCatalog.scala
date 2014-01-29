@@ -27,12 +27,12 @@ class LookUpCatalog {
   def registerStringLookUp[T](lookupClass: Class[T], lookup:LookUp[T, String]) = registerLookUp(lookupClass, classOf[String], lookup)
 
   /**
-   * Generates a specialised lookup that uses the catalog
+   * A specialised lookup that uses the catalog. 
+   * 
+   * This is a case class, so that two GeneratedLookups will be equal if they are in the same catalog and lookup the same class.
    */
-  def genLookUp[T,K] = new LookUp[T,K] {
-    
-    def lookUpOne(r:RefById[T, K]) = {
-      val lookupClass = r.clazz
+  case class GeneratedLookup[T, -K](val lookupClass: Class[T]) extends LookUp[T, K] {
+    def lookUpOne[KK <: K](r:RefById[T, KK]) = {
       val keyClass = r.id.getClass
       
       catalog.get((lookupClass, keyClass)) match {
@@ -41,8 +41,7 @@ class LookUpCatalog {
       }
     }
     
-    def lookUpMany(r:RefManyById[T, K]) = {
-      val lookupClass = r.clazz
+    def lookUpMany[KK <: K](r:RefManyById[T, KK]) = {
       val keyHead = r.rawIds.headOption
       
       keyHead match {
@@ -62,5 +61,10 @@ class LookUpCatalog {
       }
     }
   }
+  
+  /**
+   * Generates a specialised lookup that uses the catalog
+   */
+  def genLookUp[T,K](lookupClass: Class[T]) = new GeneratedLookup[T, K](lookupClass)
   
 }

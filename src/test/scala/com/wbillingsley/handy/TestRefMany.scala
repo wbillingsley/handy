@@ -32,16 +32,16 @@ object TestRefMany {
  
   
   implicit object LookupBar extends LookUp[Bar, Int] {
-    def lookUpMany(r:RefManyById[Bar, Int]) = (for { id <- r.rawIds } yield Bar(id)).toRefMany
+    def lookUpMany[K <: Int](r:RefManyById[Bar, K]) = (for { id <- r.rawIds } yield Bar(id)).toRefMany
     
-    def lookUpOne(r:RefById[Bar, Int]) = Bar(r.id).itself
+    def lookUpOne[K <: Int](r:RefById[Bar, K]) = Bar(r.id).itself
   } 
   
 
   implicit object LookupFoo extends LookUp[Foo, Int] {
-    def lookUpMany(r:RefManyById[Foo, Int]) = (for { id <- r.rawIds } yield Foo(id)).toRefMany
+    def lookUpMany[K <: Int](r:RefManyById[Foo, K]) = (for { id <- r.rawIds } yield Foo(id)).toRefMany
     
-    def lookUpOne(r:RefById[Foo, Int]) = Foo(r.id).itself
+    def lookUpOne[K <: Int](r:RefById[Foo, K]) = Foo(r.id).itself
   } 
 }
 
@@ -54,7 +54,7 @@ class TestRefMany {
     val seq2 = Stream(Foo(1), Foo(2), Foo(3), Foo(4))    
     val str = Stream(1, 2, 3, 4)
     
-    val rm = new RefManyById(classOf[Foo], str)        
+    val rm = RefManyById.of[Foo](str)
     assertEquals(seq2.toSeq, rm.fetch.toSeq)    
   }  
   

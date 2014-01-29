@@ -13,8 +13,8 @@ object PageApp {
   import DB._
   
   def setPageContent(loggedInUser:Option[Int], pageId:Option[Int], content:String):Ref[Response] = {
-    val u = Ref.fromOptionId(classOf[User], loggedInUser)
-    val p = Ref.fromOptionId(classOf[Page], loggedInUser)
+    val u = Ref.fromOptionId[User, Int](loggedInUser)
+    val p = Ref.fromOptionId[Page, Int](loggedInUser)
     for {
       approval <- Approval(u) ask CanEdit(p);
       page <- p
@@ -25,7 +25,7 @@ object PageApp {
   }
   
   def createPage(loggedInUser:Option[Int], content:String):Ref[Response] = {
-    val u = Ref.fromOptionId(classOf[User], loggedInUser)
+    val u = Ref.fromOptionId[User, Int](loggedInUser)
     
     for {
       user <- optionally(u);
@@ -37,8 +37,8 @@ object PageApp {
   }	  
   
   def viewPage(loggedInUser:Option[Int], pageId:Option[Int]):Ref[Response] = {
-    val u = Ref.fromOptionId(classOf[User], loggedInUser)
-    val p = Ref.fromOptionId(classOf[Page], pageId)
+    val u = Ref.fromOptionId[User, Int](loggedInUser)
+    val p = Ref.fromOptionId[Page, Int](pageId)
     
     for {
       page <- p;
