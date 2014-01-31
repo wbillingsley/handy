@@ -10,9 +10,13 @@ import scala.language.higherKinds
  */
 case class RefById[T, K](val id: K, val lookUpMethod:LookUpOne[T, K]) extends Ref[T] with UnresolvedRef[T] {
     
-  def getId[TT >: T, KK](implicit g:GetsId[TT, KK]) = {
+  def immediateId[TT >: T, KK](implicit g:GetsId[TT, KK]) = {
     g.canonical(id)
-  }  
+  }
+
+  def refId[TT >: T, KK](implicit g:GetsId[TT, KK]) = immediateId(g)
+
+  def getId[TT >: T, KK](implicit g:GetsId[TT, KK]) = immediateId(g)
 
   def lookUp = lookUpMethod.lookUpOne(this)
   
@@ -35,33 +39,7 @@ case class RefById[T, K](val id: K, val lookUpMethod:LookUpOne[T, K]) extends Re
   def flatMapMany[B](f: T => RefMany[B]) = lookUp.flatMap(f)  
   
   def map[B](f: (T) => B) = fetch.map(f)
-  
-  def toOption = fetch.toOption
-  
-  def isTraversableAgain = true
-  
-  def toIterator = fetch.toIterator
-  
-  def toStream = fetch.toStream
-  
-  def copyToArray[B >: T](xs:Array[B], start:Int, len:Int) { 
-    fetch.copyToArray(xs, start, len) 
-  }
-  
-  def exists(p: T => Boolean) = fetch.exists(p)
-  
-  def find(p: T => Boolean) = fetch.find(p)
-  
-  def forall(p: T => Boolean) = fetch.forall(p)
-  
-  def hasDefiniteSize = fetch.hasDefiniteSize
-  
-  def seq = fetch.seq
-  
-  def toTraversable = fetch.toTraversable   
-  
-  def isEmpty = fetch.isEmpty	
-  
+
   def withFilter(p: T => Boolean) = lookUp.withFilter(p)
   
 }

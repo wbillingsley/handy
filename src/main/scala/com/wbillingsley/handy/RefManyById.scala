@@ -83,3 +83,19 @@ trait LookUpMany[T, -K] {
 }
 
 trait LookUp[T, -K] extends LookUpMany[T, K] with LookUpOne[T, K]
+
+object LookUp {
+
+  def empty[T, K] = new LookUp[T, K] {
+    override def lookUpOne[KK <: K](r:RefById[T, KK]) = RefNone
+
+    override def lookUpMany[KK <: K](r:RefManyById[T, KK]) = RefNone
+  }
+
+  def fails[T, K](msg:String) = new LookUp[T, K] {
+    override def lookUpOne[KK <: K](r:RefById[T, KK]) = new IllegalStateException(msg)
+
+    override def lookUpMany[KK <: K](r:RefManyById[T, KK]) = new IllegalStateException(msg)
+  }
+
+}

@@ -168,12 +168,10 @@ trait Ref[+T] extends RSuper[T] {
   def fetch: ResolvedRef[T]
 
   /**
-   * Converts this Ref to an Option[T]. Note that this might cause blocking if the Ref was asynchronous.
+   * Returns an ID for the object only if one is immediately available (ie, not for incomplete futures)
    */
-  def toOption:Option[T] 
-  
-  def toEither:Either[Throwable, Option[T]] = fetch.toEither
-  
+  def immediateId[TT >: T, K](implicit g:GetsId[TT, K]):Option[K]
+
   /**
    * Note that the way this is defined, you can flatMap from a RefOne to a RefMany.
    */
@@ -194,10 +192,8 @@ trait Ref[+T] extends RSuper[T] {
   def foreach[U](func: T => U):Unit 
   
   def onComplete[U](onSuccess: T => U, onNone: => U, onFail: Throwable => U):Unit  
-  
-  def getId[TT >: T, K](implicit g:GetsId[TT, K]):Option[K] 
-  
-  def sameId[TT >: T](other: Ref[TT])(implicit g:GetsId[TT, _]) = getId(g) == other.getId(g)
+
+  def refId[TT >: T, K](implicit g:GetsId[TT, K]):Ref[K]
 
   def toFuture = {
     import scala.concurrent._
@@ -229,15 +225,17 @@ trait Ref[+T] extends RSuper[T] {
 
 
 
-
-
-
-
 /**
  * A resolved reference to an (or no) item
  */
 trait ResolvedRef[+T] extends Ref[T] with TraversableOnce[T] {
-  def fetch = this  
+  def fetch = this
+
+  def toOption:Option[T]
+
+  def toEither:Either[Throwable, Option[T]]
+
+  def getId[TT >: T, K](implicit g:GetsId[TT, K]):Option[K]
 }
 
 /**

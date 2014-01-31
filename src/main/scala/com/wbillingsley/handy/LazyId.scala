@@ -9,9 +9,11 @@ case class LazyId [T, K](id: K, lookUpMethod:LookUpOne[T, K]) extends Ref[T] {
   
   lazy val lookUp = rbi.lookUp
   
-  def getId[TT >: T, KK](implicit g:GetsId[TT, KK]) = {
-    rbi.getId(g)
-  }  
+  def refId[TT >: T, KK](implicit g:GetsId[TT, KK]) = rbi.refId(g)
+
+  def getId[TT >: T, KK](implicit g:GetsId[TT, KK]) = rbi.getId(g)
+
+  def immediateId[TT >: T, KK](implicit g:GetsId[TT, KK]) = rbi.immediateId(g)
   
   def fetch = lookUp.fetch
   
@@ -28,8 +30,6 @@ case class LazyId [T, K](id: K, lookUpMethod:LookUpOne[T, K]) extends Ref[T] {
   def flatMapMany[B](f: T => RefMany[B]) = lookUp.flatMap(f)  
   
   def map[B](f: (T) => B) = lookUp.map(f)
-  
-  def toOption = lookUp.toOption
   
   def orIfNone[B >: T](f: => Ref[B]):Ref[B] = lookUp.orIfNone(f)
   

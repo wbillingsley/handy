@@ -7,11 +7,15 @@ package com.wbillingsley.handy
 trait RefNothing extends ResolvedRef[Nothing] with ResolvedRefMany[Nothing] {
   
   override def getId[TT >: Nothing, K](implicit g:GetsId[TT, K]) = None
-  
+
+  override def refId[TT >: Nothing, K](implicit g:GetsId[TT, K]) = None
+
+  override def immediateId[TT >: Nothing, K](implicit g:GetsId[TT, K]) = None
+
   def isEmpty = true
+
   def toOption = None
-  def getId = None
-  
+
   override def fetch = this
   
   def foreach[U](f: Nothing => U) { /* does nothing */ }

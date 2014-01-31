@@ -35,10 +35,9 @@ class LookUpCache {
   }  
     
   def remember[T, KK](r:Ref[T])(implicit g: GetsId[T, KK], lu:LookUpOne[T, KK]) = {
-    r.getId match {
-      case Some(id) => store(LazyId(id)(lu), r)
-      case None => r
-    }
+    val key = r.refId
+    val stored = key flatMap { k => store(LazyId(k)(lu), r) }
+    stored orIfNone r
   }
   
   def apply[T, KK](r: Ref[T])(implicit g: GetsId[T, KK], lu:LookUpOne[T, KK]):Ref[T] = {

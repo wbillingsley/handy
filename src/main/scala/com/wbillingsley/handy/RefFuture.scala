@@ -16,8 +16,15 @@ object RefFuture {
 
 class RefFuture[+T](val future: Future[T])(implicit val executionContext:ExecutionContext) extends Ref[T] {
   
-  def getId[TT >: T, KK](implicit g:GetsId[TT, KK]) = fetch.getId(g)
-  
+  def refId[TT >: T, KK](implicit g:GetsId[TT, KK]) = {
+    for { t <- this; id <- g.getId(t) } yield id
+  }
+
+  /**
+   * To avoid programs being non-deterministic, we return None even if the Future has already completed
+   */
+  def immediateId[TT >: T, KK](implicit g:GetsId[TT, KK]) = None
+
   def fetch = {
     try {
     	val t = Await.result(future, Duration.Inf)
@@ -63,41 +70,22 @@ class RefFuture[+T](val future: Future[T])(implicit val executionContext:Executi
 
   def map[B](f: (T) => B):Ref[B] = new RefFuture(future.map(f))
   
-  def toOption = fetch.toOption
-  
-  def isTraversableAgain = false
-  
-  def toIterator = fetch.toIterator
-  
-  def toStream = fetch.toStream
-  
-  def copyToArray[B >: T](xs:Array[B], start:Int, len:Int) { 
-    fetch.copyToArray(xs, start, len) 
-  }
-  
-  def exists(p: T => Boolean) = fetch.exists(p)
-  
-  def find(p: T => Boolean) = fetch.find(p)
-  
-  def forall(p: T => Boolean) = fetch.forall(p)
-  
-  def hasDefiniteSize = fetch.hasDefiniteSize
-  
-  def seq = fetch.seq
-  
   def withFilter(p: T => Boolean) = new RefFuture(future.filter(p))
   
 }
 
 
 class RefFutureRef[+T](val futureRef: Future[Ref[T]])(implicit val executionContext:ExecutionContext = RefFuture.executionContext) extends Ref[T] {
-  
-  def getId[TT >: T, KK](implicit g:GetsId[TT, KK]) = fetch.getId(g)
-  
-  def isEmpty = fetch.isEmpty
-  
-  def toOption = fetch.toOption
-  
+
+  def refId[TT >: T, KK](implicit g:GetsId[TT, KK]) = {
+    for { t <- this; id <- g.getId(t) } yield id
+  }
+
+  /**
+   * To avoid programs being non-deterministic, we return None even if the Future has already completed
+   */
+  def immediateId[TT >: T, KK](implicit g:GetsId[TT, KK]) = None
+
   def fetch = {
     try {
     	val t = Await.result(futureRef, Duration.Inf)
@@ -153,8 +141,6 @@ class RefFutureRef[+T](val futureRef: Future[Ref[T]])(implicit val executionCont
 
 class RefFutureRefMany[+T](val futureRef: Future[RefMany[T]])(implicit val executionContext:ExecutionContext = RefFuture.executionContext) extends RefMany[T] {
   
-  def isEmpty = fetch.isEmpty
-  
   def fetch = {
     try {
     	val t = Await.result(futureRef, Duration.Inf)
@@ -197,9 +183,17 @@ class RefFutureRefMany[+T](val futureRef: Future[RefMany[T]])(implicit val execu
 
 
 class RefFutureOption[+T](val future: Future[Option[T]])(implicit val executionContext:ExecutionContext = RefFuture.executionContext) extends Ref[T] {
-  
-  def getId[TT >: T, KK](implicit g:GetsId[TT, KK]) = fetch.getId(g)
-  
+
+  def refId[TT >: T, KK](implicit g:GetsId[TT, KK]) = {
+    for { t <- this; id <- g.getId(t) } yield id
+  }
+
+  /**
+   * To avoid programs being non-deterministic, we return None even if the Future has already completed
+   */
+  def immediateId[TT >: T, KK](implicit g:GetsId[TT, KK]) = None
+
+
   def fetch = {
     try {
     	val t = Await.result(future, Duration.Inf)
@@ -255,33 +249,7 @@ class RefFutureOption[+T](val future: Future[Option[T]])(implicit val executionC
   def map[B](f: (T) => B):Ref[B] = {
     new RefFutureOption(future.map(_.map(f)))
   }
-  
-  def toOption = fetch.toOption
-  
-  def isTraversableAgain = false
-  
-  def toIterator = fetch.toIterator
-  
-  def toStream = fetch.toStream
-  
-  def copyToArray[B >: T](xs:Array[B], start:Int, len:Int) { 
-    fetch.copyToArray(xs, start, len) 
-  }
-  
-  def exists(p: T => Boolean) = fetch.exists(p)
-  
-  def find(p: T => Boolean) = fetch.find(p)
-  
-  def forall(p: T => Boolean) = fetch.forall(p)
-  
-  def hasDefiniteSize = fetch.hasDefiniteSize
-  
-  def seq = fetch.seq
-  
-  def toTraversable = fetch.toTraversable   
-  
-  def isEmpty = fetch.isEmpty    
-  
+
   def withFilter(p: T => Boolean) = new RefFutureOption(future.map(_.filter(p)))
   
 }

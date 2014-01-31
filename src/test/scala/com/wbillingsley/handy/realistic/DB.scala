@@ -22,8 +22,8 @@ object DB {
     3 -> DBUser(3, "A viewer", Set(Viewer)))
 
   val pageTable = mutable.Map(
-    1 -> DBPage(1, Some(1), "A public page", true),
-    2 -> DBPage(2, Some(1), "A non-public page", false))
+    1 -> DBPage(1, LazyId(1).of[User], "A public page", true),
+    2 -> DBPage(2, LazyId(1).of[User], "A non-public page", false))
   
   /**
    * We are resolving users synchronously, but pages as futures. That's just to show that the handy framework can cope!
@@ -54,19 +54,22 @@ object DB {
   }
 
   case class DBUser(val id: Int, var name: String, var roles: Set[Role] = Set(Viewer)) extends User
-  case class DBPage(val id: Int, var _createdBy: Option[Int], var content: String, var isPublic: Boolean) extends Page {
+  case class DBPage(val id: Int, var _createdBy: Ref[User], var content: String, var isPublic: Boolean) extends Page {
 
-    def createdBy = Ref.fromOptionId[User, Int](_createdBy)
+    def createdBy = _createdBy
 
     def createdBy_=(u: Ref[User]) {
-      _createdBy = u.getId
+      val rId = u.refId
+      _createdBy = rId flatMap { id => LazyId(id).of[User] }
     }
 
   }
 
   def createPage(createdBy: Ref[User], content: String, isPublic: Boolean = false) = {
     val key = pageTable.keySet.max + 1
-    val p = DBPage(key, createdBy.getId, content, isPublic)
+    val lazyCB = createdBy.refId flatMap { id => LazyId(id).of[User] }
+
+    val p = DBPage(key, lazyCB, content, isPublic)
     pageTable.put(key, p)
     p.itself
   }

@@ -26,7 +26,7 @@ class LookUpCacheSpec extends Specification {
       import DB._
  
       // This should become a reference to a database class 
-      val p1itself = LazyId(1)[Page].toOption.get.itself
+      val p1itself = LazyId(1).of[Page].fetch
       
       // Put it into the cache
       cache(p1itself)
@@ -35,7 +35,7 @@ class LookUpCacheSpec extends Specification {
       assignable must be_==(true)
       
       // Even though the class on the RefById is to the superclass, it should still find it
-      cache(LazyId(1)[Page]) must be_===(p1itself)
+      cache(LazyId(1).of[Page]) must be_===(p1itself)
     }     
     
   }
