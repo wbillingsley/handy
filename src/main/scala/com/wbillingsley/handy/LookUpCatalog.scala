@@ -66,5 +66,12 @@ class LookUpCatalog {
    * Generates a specialised lookup that uses the catalog
    */
   def genLookUp[T,K](lookupClass: Class[T]) = new GeneratedLookup[T, K](lookupClass)
-  
+
+  /**
+   * Creates a LazyId whose LookUp uses the catalog.
+   *
+   * For example, {@code catalog.lazyId(classOf[Foo], 1)}
+   */
+  def lazyId[T, K](clazz:Class[T], id:K) = LazyId(id).of(genLookUp(clazz))
+
 }

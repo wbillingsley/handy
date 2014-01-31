@@ -56,10 +56,13 @@ object RefById {
     def apply[T](implicit lookUpMethod:LookUpOne[T, K]) = new RefById(id, lookUpMethod)
 
     def of[T](implicit lookUpMethod:LookUpOne[T, K]) = apply(lookUpMethod)
+
+    def whichIs[T](r:Ref[T]) = new RefById(id, LookUpOne.AlwaysReturns(r))
   }
 
   def apply[K](id:K) = new JustId(id)
 
+  def empty[T,K] = new RefById(None, LookUp.empty)
 }
 
 
@@ -73,4 +76,15 @@ object RefById {
  */
 trait LookUpOne[T, -K] {
   def lookUpOne[KK <: K](r:RefById[T, KK]):Ref[T]
+}
+
+object LookUpOne {
+
+  /**
+   * A look up that always returns the item you just gave it
+   */
+  case class AlwaysReturns[T](r:Ref[T]) extends LookUpOne[T, Any] {
+    def lookUpOne[KK <: Any](r:RefById[T, KK]):Ref[T] = r
+  }
+
 }

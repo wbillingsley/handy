@@ -1,7 +1,8 @@
 package com.wbillingsley.handy
 
 /**
- * A Ref by id, that uses a lazy val to cache the result of looking it up
+ * A Ref by id, that uses a lazy val to cache the result of looking it up.
+ * Generally you should use this
  */
 case class LazyId [T, K](id: K, lookUpMethod:LookUpOne[T, K]) extends Ref[T] {
 
@@ -49,8 +50,12 @@ object LazyId {
   class JustId[K](val id:K) extends AnyVal {
     def apply[T](implicit lookUpMethod:LookUpOne[T, K]) = new LazyId(id, lookUpMethod)
     def of[T](implicit lookUpMethod:LookUpOne[T, K]) = apply(lookUpMethod)
+
+    def whichIs[T](r:Ref[T]) = new LazyId(id, LookUpOne.AlwaysReturns(r))
   }
 
   def apply[K](id:K) = new JustId(id)
+
+  def empty[T,K] = new LazyId(None, LookUp.empty)
 
 }
