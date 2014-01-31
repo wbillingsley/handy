@@ -23,11 +23,11 @@ class PermSpec extends Specification {
     def resolve(prior:Approval[User]) = for { f <- r } yield Approved("looked it up")
   }
 
-  val fooCache = Perm.of[User, Foo].cacheOnId {
+  val fooCache = Perm.cacheOnId[User, Foo] {
     case (prior, r) => for { f <- r } yield Approved("looked it up")
   }
 
-  val barCache = Perm.of[User, Bar].cacheOnId {
+  val barCache = Perm.cacheOnId[User, Bar] {
     case (prior, r) => for { f <- r } yield Approved("looked it up")
   }
 
