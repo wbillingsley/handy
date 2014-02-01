@@ -2,7 +2,7 @@ name := "handy"
 
 organization in ThisBuild := "com.wbillingsley"
 
-version in ThisBuild := "0.5-SNAPSHOT"
+version in ThisBuild := "0.5.0-RC1"
 
 scalaVersion in ThisBuild := "2.10.3"
 
@@ -10,18 +10,21 @@ scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation", "-feature")
 
 crossScalaVersions in ThisBuild := Seq("2.10.3")
 
-licenses in ThisBuild := Seq("MIT License" -> url("http://www.opensource.org/licenses/mit-license.php"))
+licenses in ThisBuild := Seq("MIT" -> url("http://www.opensource.org/licenses/mit-license.php"))
 
-homepage in ThisBuild := Some(url("http://wbillingsley.github.io/handy"))
+homepage in ThisBuild := Some(url("http://github.com/wbillingsley/handy"))
 
 publishMavenStyle in ThisBuild := true
 
-publishTo in ThisBuild <<= version { (v: String) =>
+// Bintray settings for publishing releases
+seq(bintrayPublishSettings:_*)
+
+publishTo in ThisBuild := {
   val nexus = "https://oss.sonatype.org/"
-  if (v.trim.endsWith("SNAPSHOT"))
+  if (version.value.trim.endsWith("SNAPSHOT"))
     Some("snapshots" at nexus + "content/repositories/snapshots")
   else
-    Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+    publishTo.value
 }
 
 parallelExecution in Test := false
