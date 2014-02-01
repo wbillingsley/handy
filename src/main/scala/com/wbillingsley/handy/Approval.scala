@@ -14,7 +14,7 @@ import Ref._
  */
 case class Approval[U](
     val who: Ref[U],
-    val permissions: mutable.Set[Perm[U]] = mutable.Set.empty[Perm[U]],
+    val permissions: mutable.Set[Perm[U]] with mutable.SynchronizedSet[Perm[U]] = new mutable.HashSet[Perm[U]] with mutable.SynchronizedSet[Perm[U]],
     val cache:LookUpCache = new LookUpCache
 ) {
   
@@ -200,12 +200,19 @@ object Approval {
       }
     }
 
-
     /**
      * Returns a Ref[Boolean] 
      */
-    def askBoolean(permission: Perm[U]) = askOne(permission) map(_ => true) recoverWith(PartialFunction.apply((x:Throwable) => false.itself)) orIfNone false.itself
-    
+    def askBoolean(permission: Perm[U]):Ref[Boolean] = {
+      askOne(permission) map(_ => true) recoverWith(PartialFunction.apply(
+        (x:Throwable) => false.itself)
+      ) orIfNone false.itself
+    }
+
+    /**
+     * Returns a Ref[Boolean]
+     */
+    def askBoolean(refPerm: Ref[Perm[U]]):Ref[Boolean] = refPerm flatMap askBoolean // calls askBoolean(Perm[U])
   }
   
   

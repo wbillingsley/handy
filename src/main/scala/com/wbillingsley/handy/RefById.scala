@@ -8,7 +8,7 @@ import scala.language.higherKinds
  * clazz is kept because it will be needed at run-time by the lookUp method (to know which class to look 
  * up in the database)
  */
-case class RefById[T, K](val id: K, val lookUpMethod:LookUpOne[T, K]) extends Ref[T] with UnresolvedRef[T] {
+case class RefById[T, K](val id: K, val lookUpMethod:LookUpOne[T, K]) extends Ref[T] with UnresolvedRef[T] with IdImmediate[T] {
     
   def immediateId[TT >: T, KK](implicit g:GetsId[TT, KK]) = {
     g.canonical(id)
@@ -62,7 +62,7 @@ object RefById {
 
   def apply[K](id:K) = new JustId(id)
 
-  def empty[T,K] = new RefById(None, LookUp.empty)
+  def empty[T] = new RefById[T,Any](None, LookUp.empty)
 }
 
 

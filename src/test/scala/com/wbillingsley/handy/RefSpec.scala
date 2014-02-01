@@ -129,6 +129,11 @@ object RefSpec extends Specification {
       oneStr.fetch must be equalTo oneInt.fetch
     }
 
+    "Support empty look ups" in {
+      var foo:LazyId[TItem, _] = LazyId.empty
+      foo.fetch must be_==(RefNone)
+    }
+
   }
   
 

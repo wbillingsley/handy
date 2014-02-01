@@ -223,19 +223,22 @@ trait Ref[+T] extends RSuper[T] {
   }
 }
 
-
+/**
+ * A {@code Ref} that has an ID that can immediately be got.
+ */
+trait IdImmediate[+T] {
+  def getId[TT >: T, K](implicit g:GetsId[TT, K]):Option[K]
+}
 
 /**
  * A resolved reference to an (or no) item
  */
-trait ResolvedRef[+T] extends Ref[T] with TraversableOnce[T] {
+trait ResolvedRef[+T] extends Ref[T] with TraversableOnce[T] with IdImmediate[T] {
   def fetch = this
 
   def toOption:Option[T]
 
   def toEither:Either[Throwable, Option[T]]
-
-  def getId[TT >: T, K](implicit g:GetsId[TT, K]):Option[K]
 }
 
 /**

@@ -4,7 +4,7 @@ package com.wbillingsley.handy
  * A Ref by id, that uses a lazy val to cache the result of looking it up.
  * Generally you should use this
  */
-case class LazyId [T, K](id: K, lookUpMethod:LookUpOne[T, K]) extends Ref[T] {
+case class LazyId [T, K](id: K, lookUpMethod:LookUpOne[T, K]) extends Ref[T] with IdImmediate[T] {
 
   val rbi = new RefById(id, lookUpMethod)
   
@@ -56,6 +56,6 @@ object LazyId {
 
   def apply[K](id:K) = new JustId(id)
 
-  def empty[T,K] = new LazyId(None, LookUp.empty)
+  def empty[T] = new LazyId[T,Any](None, LookUp.empty)
 
 }

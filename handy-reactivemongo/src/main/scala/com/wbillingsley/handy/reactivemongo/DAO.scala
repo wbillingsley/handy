@@ -59,8 +59,8 @@ trait DAO {
   /**
    * Implicit conversion that allows LazyId[_ ,_] to be written as BSON
    */
-  implicit def LazyIdWriter[T <: HasStringId] = new BSONWriter[LazyId[T, _], BSONValue] {
-    def write(r:LazyId[T, _]) = {
+  implicit def RefWithStringIdWriter[T <: HasStringId] = new BSONWriter[RefWithId[T], BSONValue] {
+    def write(r:RefWithId[T]) = {
       if (db.useBSONIds) {
         r.getId.map(new BSONObjectID(_)).getOrElse(BSONNull)
       } else {
@@ -72,7 +72,7 @@ trait DAO {
   /**
    * Implicit conversion that allows RefMany[_] to be written as BSON
    */
-  implicit def RefManyByIdWriter[T <: HasStringId] = new BSONWriter[RefManyById[T, String], BSONValue] {
+  implicit def RefManyByStringIdWriter[T <: HasStringId] = new BSONWriter[RefManyById[T, String], BSONValue] {
     def write(r:RefManyById[T, String]) = {
       if (db.useBSONIds) {
         BSONArray(r.rawIds.map(new BSONObjectID(_)))
