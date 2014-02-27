@@ -182,17 +182,27 @@ trait DAO {
     val fut = fle.map { _ => RefItself(item) } recover { case x:Throwable => RefFailed(x) }
     new RefFutureRef(fut)    
   }
-  
+
   def findMany(query:BSONDocument):RefMany[DataT] = {
     new RefEnumIter(coll.find(query).cursor[DataT].enumerateBulks(maxDocs=Int.MaxValue, stopOnError=true))
   }
+  def findMany(query:Ref[BSONDocument]):RefMany[DataT] = query flatMap findMany
 
   def findSorted(query:BSONDocument, sort:BSONDocument):RefMany[DataT] = {
     new RefEnumIter(coll.find(query).sort(sort).cursor[DataT].enumerateBulks(maxDocs=Int.MaxValue, stopOnError=true))
+  }
+  def findSorted(query:Ref[BSONDocument], sort:Ref[BSONDocument]):RefMany[DataT] = {
+    query flatMap { q =>
+      sort flatMap { s =>
+        findSorted(q,s)
+      }
+    }
   }
 
   
   def findOne(query:BSONDocument):Ref[DataT] = {
     new RefFutureOption(coll.find(query).one[DataT])    
   }
+  def findOne(query:Ref[BSONDocument]):Ref[DataT] = query flatMap findOne
+
 }

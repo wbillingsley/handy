@@ -72,30 +72,3 @@ object RefManyById {
   def apply[K](ids: Seq[K]) = new JustId(ids)
   
 }
-
-
-/**
- * This has to be a trait, rather than just a function because a RefManyById[T, K] is already a RefMany[T].
- * Which means that if it was just a function, then Predef.conforms would be implicitly found.
- */
-trait LookUpMany[T, -K] {
-  def lookUpMany[KK <: K](r:RefManyById[T, KK]):RefMany[T]
-}
-
-trait LookUp[T, -K] extends LookUpMany[T, K] with LookUpOne[T, K]
-
-object LookUp {
-
-  def empty[T, K] = new LookUp[T, K] {
-    override def lookUpOne[KK <: K](r:RefById[T, KK]) = RefNone
-
-    override def lookUpMany[KK <: K](r:RefManyById[T, KK]) = RefNone
-  }
-
-  def fails[T, K](msg:String) = new LookUp[T, K] {
-    override def lookUpOne[KK <: K](r:RefById[T, KK]) = new IllegalStateException(msg)
-
-    override def lookUpMany[KK <: K](r:RefManyById[T, KK]) = new IllegalStateException(msg)
-  }
-
-}

@@ -2,7 +2,7 @@ name := "handy"
 
 organization in ThisBuild := "com.wbillingsley"
 
-version in ThisBuild := "0.5.0-RC1"
+version in ThisBuild := "0.5.0-SNAPSHOT"
 
 scalaVersion in ThisBuild := "2.10.3"
 
@@ -17,7 +17,7 @@ homepage in ThisBuild := Some(url("http://github.com/wbillingsley/handy"))
 publishMavenStyle in ThisBuild := true
 
 // Bintray settings for publishing releases
-seq(bintrayPublishSettings:_*)
+//seq(bintrayPublishSettings:_*)
 
 publishTo in ThisBuild := {
   val nexus = "https://oss.sonatype.org/"

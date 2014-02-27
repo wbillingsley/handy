@@ -1,4 +1,4 @@
-package com.wbillingsley.handy.appbase
+package com.wbillingsley.handy.user
 
 import com.wbillingsley.encrypt.Encrypt
 import com.wbillingsley.handy.Ref

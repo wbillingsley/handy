@@ -1,4 +1,4 @@
-package com.wbillingsley.handy.appbase
+package com.wbillingsley.handy.user
 
 trait Identity {
   
