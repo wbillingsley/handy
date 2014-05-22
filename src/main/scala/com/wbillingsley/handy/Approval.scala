@@ -1,8 +1,9 @@
 package com.wbillingsley.handy
 
-import scala.collection.mutable
+import java.util.concurrent.ConcurrentSkipListSet
 import scala.language.{implicitConversions, postfixOps}
 import Ref._
+
 
 /**
  * A mutable set of permissions.  It's mutable so that in the case where
@@ -13,11 +14,15 @@ import Ref._
  * calling the database mutliple times for the same item.
  */
 case class Approval[U](
-    val who: Ref[U],
-    val permissions: mutable.Set[Perm[U]] with mutable.SynchronizedSet[Perm[U]] = new mutable.HashSet[Perm[U]] with mutable.SynchronizedSet[Perm[U]],
-    val cache:LookUpCache = new LookUpCache
+    val who: Ref[U]
 ) {
-  
+  import scala.collection.JavaConversions._
+  import scala.collection.mutable
+  import java.util._
+
+  val permissions: mutable.Set[Perm[U]] = Collections.newSetFromMap[Perm[U]](new concurrent.ConcurrentHashMap())
+
+  val cache:LookUpCache = new LookUpCache
 }
 
 case class Refused(msg: String) extends Throwable(msg) {  

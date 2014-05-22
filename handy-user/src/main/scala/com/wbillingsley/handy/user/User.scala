@@ -1,6 +1,5 @@
 package com.wbillingsley.handy.user
 
-import com.wbillingsley.encrypt.Encrypt
 import com.wbillingsley.handy.Ref
 
 trait User[I <: Identity, PL <: PasswordLogin] {

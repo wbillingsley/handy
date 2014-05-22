@@ -4,7 +4,7 @@ import play.api.libs.json._
 import play.api.libs.iteratee.{Iteratee, Enumerator, Enumeratee}
 import play.api.test.WithApplication
 import org.specs2.mutable._
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Await, Future}
 import com.wbillingsley.handy.{ RefFuture, RefFutureOption }
 import com.wbillingsley.handy.Ref._
 import RefConversions._
@@ -17,30 +17,30 @@ class RefEnumeratorSpec extends Specification {
   sequential
   
   "Helper" should {
-    
-    "correctly identify a sequence" in {      
+
+    "correctly identify a sequence" in {
       val items = Enumerator(1, 2, 3) andThen Enumerator.eof
-      items.verify(_ == 1, _ == 2, _ == 3) must be_==(true).await      
+      items.verify(_ == 1, _ == 2, _ == 3) must be_==(true).await
     }
     
     "complain about incorrect items in a sequence" in {      
       val items = Enumerator(1, 2, 3) andThen Enumerator.eof
-      items.verify(_ == 1, _ == 4, _ == 3) must throwA[RuntimeException]("Element failed check: 2").await     
+      items.verify(_ == 1, _ == 4, _ == 3).await must throwA[RuntimeException]("Element failed check: 2")
     }
     
     "complain about too may items in a sequence" in {      
       val items = Enumerator(1, 2, 3, 4) andThen Enumerator.eof
-      items.verify(_ == 1, _ == 2, _ == 3) must throwA[RuntimeException]("Element received after checks exhausted: 4").await
+      items.verify(_ == 1, _ == 2, _ == 3).await must throwA[RuntimeException]("Element received after checks exhausted: 4")
     }
     
     "complain about a premature EOF" in {      
       val items = Enumerator(1, 2) andThen Enumerator.eof andThen Enumerator(3) andThen Enumerator.eof
-      items.verify(_ == 1, _ == 2, _ == 3) must throwA[RuntimeException]("EOF received before checks were exhausted. Remaining: 1").await
+      items.verify(_ == 1, _ == 2, _ == 3).await must throwA[RuntimeException]("EOF received before checks were exhausted. Remaining: 1")
     }       
     
     "complain about too few items in a sequence" in {      
       val items = Enumerator(1, 2) 
-      items.verify(_ == 1, _ == 2, _ == 3) must throwA[RuntimeException]("EOF received before checks were exhausted. Remaining: 1").await
+      items.verify(_ == 1, _ == 2, _ == 3).await must throwA[RuntimeException]("EOF received before checks were exhausted. Remaining: 1")
     }
   }
   
@@ -49,7 +49,7 @@ class RefEnumeratorSpec extends Specification {
       val items = Enumerator(1, 2)
       val refEnum = new RefEnumerator(items)
       import RefConversions._
-      refEnum.enumerate.verify(_ == 1, _ == 3) must throwA[RuntimeException]("Element failed check: 2").await
+      refEnum.enumerate.verify(_ == 1, _ == 3).await must throwA[RuntimeException]("Element failed check: 2")
       
     }
     
@@ -65,7 +65,7 @@ class RefEnumeratorSpec extends Specification {
       } yield v
       
       import RefConversions._
-      rr.enumerate.verify(_ == 5, _ == 10, _ == 14) must throwA[RuntimeException]("Element failed check: 15").await
+      rr.enumerate.verify(_ == 5, _ == 10, _ == 14).await must throwA[RuntimeException]("Element failed check: 15")
       
     }
   }
@@ -111,10 +111,12 @@ class RefEnumeratorSpec extends Specification {
       val re = new RefEnumerator(items)
       
       def rf(num:Int) = {
+        import scala.concurrent.Future
+
         if (num % 2 == 0) {
-          new RefFuture(scala.concurrent.future { "even: " + num })
+          new RefFuture(Future { "even: " + num })
         } else {
-          new RefFutureOption(scala.concurrent.future { None })
+          new RefFutureOption(Future { None })
         }
       }
       

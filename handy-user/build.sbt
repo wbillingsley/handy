@@ -1,3 +1,3 @@
-libraryDependencies += "com.wbillingsley" %% "salt-encrypt" % "0.1.0-RC1"
+libraryDependencies += "org.mindrot" % "jbcrypt" % "0.3m"
 
 resolvers += "bintrayW" at "http://dl.bintray.com/wbillingsley/maven"

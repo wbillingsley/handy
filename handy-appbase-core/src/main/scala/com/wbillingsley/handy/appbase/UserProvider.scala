@@ -5,7 +5,7 @@ import play.api.mvc.RequestHeader
 
 trait UserProvider[U] extends UserFromRequest[U] {
   
-  final def user(request:RequestHeader):Ref[U] = {    
+  def user(request:RequestHeader):Ref[U] = {
     request.session.get("sessionKey") match {
       case Some(sk) => bySessionKey(sk)
       case None => RefNone

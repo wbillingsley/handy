@@ -1,12 +1,15 @@
 package com.wbillingsley.handy.user
 
-import com.wbillingsley.encrypt.Encrypt
+import org.mindrot.jbcrypt.BCrypt;
 
 trait PasswordLogin {
     
-  def hash(password: String) = for (s <- salt) yield Encrypt.encrypt(s, password)  
+  def hash(password: String) = BCrypt.hashpw(password, BCrypt.gensalt())
 
-  val salt: Option[String]
+  def checkPassword(pw:String) = pwhash match {
+    case Some(hashed) => BCrypt.checkpw(pw, hashed)
+    case None => false
+  }
 
   val pwhash: Option[String]
 
@@ -14,10 +17,4 @@ trait PasswordLogin {
 
   val email: Option[String]
   
-}
-
-object PasswordLogin {
-  
-  def defaultSalt = Some(Encrypt.genSaltB64)
-
 }

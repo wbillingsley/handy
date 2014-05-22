@@ -62,7 +62,7 @@ trait DAO {
   implicit def RefWithStringIdWriter[T <: HasStringId] = new BSONWriter[RefWithId[T], BSONValue] {
     def write(r:RefWithId[T]) = {
       if (db.useBSONIds) {
-        r.getId.map(new BSONObjectID(_)).getOrElse(BSONNull)
+        r.getId.map(BSONObjectID(_)).getOrElse(BSONNull)
       } else {
         r.getId.map(BSONString(_)).getOrElse(BSONNull)
       }
@@ -75,7 +75,7 @@ trait DAO {
   implicit def RefManyByStringIdWriter[T <: HasStringId] = new BSONWriter[RefManyById[T, String], BSONValue] {
     def write(r:RefManyById[T, String]) = {
       if (db.useBSONIds) {
-        BSONArray(r.rawIds.map(new BSONObjectID(_)))
+        BSONArray(r.rawIds.map(BSONObjectID(_)))
       } else {
         BSONArray(r.rawIds.map(BSONString(_)))
       }
@@ -88,7 +88,7 @@ trait DAO {
    */
   def idIs(id:String):(String, BSONValue) = {
     if (db.useBSONIds) {
-      "_id" -> new BSONObjectID(id)
+      "_id" -> BSONObjectID(id)
     } else {
       "_id" -> BSONString(id) 
     }
@@ -100,7 +100,7 @@ trait DAO {
    */
   def idsIn(ids:Seq[String]):(String, BSONValue) = {
     if (db.useBSONIds) {
-      val oids = for (id <- ids) yield new BSONObjectID(id)
+      val oids = for (id <- ids) yield BSONObjectID(id)
       
       "_id" -> BSONDocument("$in" -> oids.toSet)
     } else {

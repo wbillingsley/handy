@@ -2,13 +2,13 @@ name := "handy"
 
 organization in ThisBuild := "com.wbillingsley"
 
-version in ThisBuild := "0.5.0-SNAPSHOT"
+version in ThisBuild := "0.6.0-SNAPSHOT"
 
-scalaVersion in ThisBuild := "2.10.3"
+scalaVersion in ThisBuild := "2.11.0"
 
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation", "-feature")
 
-crossScalaVersions in ThisBuild := Seq("2.10.3")
+crossScalaVersions in ThisBuild := Seq("2.11.0")
 
 licenses in ThisBuild := Seq("MIT" -> url("http://www.opensource.org/licenses/mit-license.php"))
 
@@ -46,6 +46,6 @@ pomExtra in ThisBuild := (
 
 libraryDependencies += "junit" % "junit" % "4.7" % "test"
 
-libraryDependencies += "org.specs2" %% "specs2" % "2.1.1" % "test"
+libraryDependencies in ThisBuild += "org.specs2" %% "specs2" % "2.3.12" % "test"
 
 libraryDependencies += "com.novocode" % "junit-interface" % "0.7" % "test" 

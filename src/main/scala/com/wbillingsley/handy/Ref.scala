@@ -198,7 +198,7 @@ trait Ref[+T] extends RSuper[T] {
   def toFuture = {
     import scala.concurrent._
 
-    val p = promise[T]
+    val p = Promise[T]()
     this onComplete(
       onSuccess = p success _,
       onNone = p failure new NoSuchElementException(),
@@ -213,7 +213,7 @@ trait Ref[+T] extends RSuper[T] {
   def toFutOpt:Future[Option[T]] = {
     import scala.concurrent._
     
-    val p = promise[Option[T]]
+    val p = Promise[Option[T]]()
       this onComplete(
         onSuccess = p success Some(_),        
         onNone = p success None,

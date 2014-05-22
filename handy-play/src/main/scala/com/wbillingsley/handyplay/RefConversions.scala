@@ -15,14 +15,21 @@ object RefConversions {
 
       case _ => new Enumerator[T] {
         def apply[A](it: Iteratee[T, A]) = {
-          import com.wbillingsley.handy.Ref._
           val res = rm.fold(it) { (it, el) => Iteratee.flatten(it.feed(Input.El(el))) }
-          res.toFutOpt.map(_.getOrElse(it))(RefFuture.executionContext)
+          res.toFutOpt.map(_.getOrElse(it))(executionContext)
         }
       }
     }
     
     def enumerateR(implicit executionContext:ExecutionContext):Ref[Enumerator[T]] = rm whenReady { _.enumerate }
+
+    /**
+     * Turns the RefMany into an Enumerator, and pushes it through an Enumeratee.
+     * This allows for things like <code>take(n)</code>, by applying an appropriate Enumeratee.
+     */
+    def through[B](e:Enumeratee[T, B])(implicit executionContext:ExecutionContext):RefMany[B] = {
+      new RefEnumerator[B](enumerate through e)
+    }
   }
   
   
@@ -49,7 +56,7 @@ object RefConversions {
             case _ => {
               it.fold {
                 case Step.Cont(k) => {
-                  val p = scala.concurrent.promise[Iteratee[T, A]]
+                  val p = scala.concurrent.Promise[Iteratee[T, A]]()
                   r.onComplete(onSuccess={ el =>
                     p.success(k(Input.El(el)))
                   }, 

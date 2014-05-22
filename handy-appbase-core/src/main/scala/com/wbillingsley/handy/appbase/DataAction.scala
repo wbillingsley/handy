@@ -1,6 +1,6 @@
 package com.wbillingsley.handy.appbase
 
-import play.api.mvc.{EssentialAction, Request, RequestHeader, AnyContent, AcceptExtractors, BodyParser, BodyParsers, Action, SimpleResult, Results}
+import play.api.mvc.{EssentialAction, Request, RequestHeader, AnyContent, AcceptExtractors, BodyParser, BodyParsers, Action, Result, Results}
 
 import com.wbillingsley.handy._
 import Ref._
@@ -107,7 +107,7 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
   /*
    * Handles error conditions from a DataAction
    */
-  private def handleErrors(r:Ref[Iteratee[Array[Byte], SimpleResult]])(implicit request:RequestHeader):Ref[Iteratee[Array[Byte], SimpleResult]] = { 
+  private def handleErrors(r:Ref[Iteratee[Array[Byte], Result]])(implicit request:RequestHeader):Ref[Iteratee[Array[Byte], Result]] = { 
     // Convert failures into appropriate responses
     val recovered = r recoverWith {
       case Refused(msg) => request match {
@@ -139,10 +139,10 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
   }
   
   /*
-   * Processes a Ref[SimpleResult] with headers into an Iteratee that can be returned from an action's apply method 
+   * Processes a Ref[Result] with headers into an Iteratee that can be returned from an action's apply method 
    */
-  private def refSimpleResultToIteratee(request: AppbaseRequest[_, _], whi:WithHeaderInfo[Ref[SimpleResult]]) = {
-    val refOriginal = for { simpleResult <- whi.data } yield doneIteratee(simpleResult)
+  private def refResultToIteratee(request: AppbaseRequest[_, _], whi:WithHeaderInfo[Ref[Result]]) = {
+    val refOriginal = for { Result <- whi.data } yield doneIteratee(Result)
     
     val refModified = for {
       // Get the header info; default it if there's none but fail if there's an error
@@ -173,37 +173,37 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
         Enumerator("[") andThen j.enumerate.stringify andThen Enumerator("]") andThen Enumerator.eof[String]
       ).as("application/json")
     }
-    refSimpleResultToIteratee(request, WithHeaderInfo(res, whi.headerInfo))
+    refResultToIteratee(request, WithHeaderInfo(res, whi.headerInfo))
   }
   
   /**
    * An action returning a Result
    */
-  def resultWH(block: AppbaseRequest[AnyContent, U] => WithHeaderInfo[Ref[SimpleResult]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
+  def resultWH(block: AppbaseRequest[AnyContent, U] => WithHeaderInfo[Ref[Result]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
     val wrapped = new AppbaseRequest(request)
-    refSimpleResultToIteratee(wrapped, block(wrapped))
+    refResultToIteratee(wrapped, block(wrapped))
   }
 
-  def result(block: AppbaseRequest[AnyContent, U] => Ref[SimpleResult]) = resultWH(block.andThen(WithHeaderInfo(_)))
+  def result(block: AppbaseRequest[AnyContent, U] => Ref[Result]) = resultWH(block.andThen(WithHeaderInfo(_)))
 
   
   /**
    * An action returning a Result
    */
-  def resultWH(block: => WithHeaderInfo[Ref[SimpleResult]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request => 
+  def resultWH(block: => WithHeaderInfo[Ref[Result]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request => 
     val wrapped = new AppbaseRequest(request)
-    refSimpleResultToIteratee(wrapped, block)
+    refResultToIteratee(wrapped, block)
   }
-  def result(block: => Ref[SimpleResult]) = resultWH { WithHeaderInfo(block) }
+  def result(block: => Ref[Result]) = resultWH { WithHeaderInfo(block) }
   
   /**
    * An action returning a Result
    */
-  def resultWH[A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => WithHeaderInfo[Ref[SimpleResult]]) = BodyAction(bodyParser) { implicit request => 
+  def resultWH[A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => WithHeaderInfo[Ref[Result]]) = BodyAction(bodyParser) { implicit request => 
     val wrapped = new AppbaseRequest(request)
-    refSimpleResultToIteratee(wrapped, block(wrapped))
+    refResultToIteratee(wrapped, block(wrapped))
   }
-  def result[A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => Ref[SimpleResult]) = resultWH(bodyParser)(block.andThen(WithHeaderInfo(_))) 
+  def result[A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => Ref[Result]) = resultWH(bodyParser)(block.andThen(WithHeaderInfo(_))) 
   
   /**
    * An action returning JSON, with header information for the request
@@ -215,7 +215,7 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
         val wrapped = new AppbaseRequest(request)
         val whi = block(wrapped)
         val res = for (j <- whi.data) yield Results.Ok(j)
-        refSimpleResultToIteratee(wrapped, WithHeaderInfo(res, whi.headerInfo))
+        refResultToIteratee(wrapped, WithHeaderInfo(res, whi.headerInfo))
       }
     }
   }
@@ -236,7 +236,7 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
         val wrapped = new AppbaseRequest(request)
         val whi = block
         val res = for (j <- whi.data) yield Results.Ok(j)
-        refSimpleResultToIteratee(wrapped, WithHeaderInfo(res, whi.headerInfo))
+        refResultToIteratee(wrapped, WithHeaderInfo(res, whi.headerInfo))
       }
     }
   }
@@ -257,7 +257,7 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
         val wrapped = new AppbaseRequest(request)
         val whi = block(wrapped)
         val res = for (j <- whi.data) yield Results.Ok(j)
-        refSimpleResultToIteratee(wrapped, WithHeaderInfo(res, whi.headerInfo))
+        refResultToIteratee(wrapped, WithHeaderInfo(res, whi.headerInfo))
       }
     }
   }    
@@ -280,7 +280,7 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
           item <- whi.data
           j <- jc.toJsonFor(item, wrapped.approval)
         } yield Results.Ok(j)
-        refSimpleResultToIteratee(wrapped, WithHeaderInfo(res, whi.headerInfo))
+        refResultToIteratee(wrapped, WithHeaderInfo(res, whi.headerInfo))
       }
     }    
   }  
@@ -304,7 +304,7 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
           item <- whi.data
           j <- jc.toJsonFor(item, wrapped.approval)
         } yield Results.Ok(j)
-        refSimpleResultToIteratee(wrapped, WithHeaderInfo(res, whi.headerInfo))
+        refResultToIteratee(wrapped, WithHeaderInfo(res, whi.headerInfo))
       }
     }     
   }
@@ -328,7 +328,7 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
           item <- whi.data
           j <- jc.toJsonFor(item, wrapped.approval)
         } yield Results.Ok(j)
-        refSimpleResultToIteratee(wrapped, WithHeaderInfo(res, whi.headerInfo))
+        refResultToIteratee(wrapped, WithHeaderInfo(res, whi.headerInfo))
       }
     }         
   }
@@ -467,7 +467,7 @@ object DataAction extends AcceptExtractors {
   // Allows syntactic sugar of "DataAction returning one"
   def returning[U](implicit config:DataActionConfig, ufr:UserFromRequest[U]) = DataAction()(config, ufr)
   
-  def doneIteratee[A](res:SimpleResult) = Done[Array[Byte], SimpleResult](res, Input.Empty)     
+  def doneIteratee[A](res:Result) = Done[Array[Byte], Result](res, Input.Empty)     
     
   
   /**
@@ -479,8 +479,8 @@ object DataAction extends AcceptExtractors {
    * 
    * So, this class provides us with an EssentialAction that takes a body parser (so we don't need to use Action to specify a BodyParser)
    */
-  class BodyAction[A](parser:BodyParser[A])(block: Request[A] => Iteratee[Array[Byte], SimpleResult]) extends EssentialAction {
-    def apply(rh: RequestHeader): Iteratee[Array[Byte], SimpleResult] = {
+  class BodyAction[A](parser:BodyParser[A])(block: Request[A] => Iteratee[Array[Byte], Result]) extends EssentialAction {
+    def apply(rh: RequestHeader): Iteratee[Array[Byte], Result] = {
       parser(rh) flatMap { parseResult =>
         parseResult match {
           case Left(r) => doneIteratee(r)
@@ -494,7 +494,7 @@ object DataAction extends AcceptExtractors {
   }
   
   object BodyAction {
-    def apply[A](parser:BodyParser[A])(block: Request[A] => Iteratee[Array[Byte], SimpleResult]) = new BodyAction(parser)(block)
+    def apply[A](parser:BodyParser[A])(block: Request[A] => Iteratee[Array[Byte], Result]) = new BodyAction(parser)(block)
   }
   
     
@@ -512,7 +512,7 @@ object DataAction extends AcceptExtractors {
   /**
    * Applies the headerInfo to the result
    */
-  protected def addHeaderInfoToResult(wrapped:AppbaseRequest[_, _], result:SimpleResult, headerInfo:HeaderInfo = HeaderInfo()) = {
+  protected def addHeaderInfoToResult(wrapped:AppbaseRequest[_, _], result:Result, headerInfo:HeaderInfo = HeaderInfo()) = {
     var r = result
     
     if (!headerInfo.headers.isEmpty) {
