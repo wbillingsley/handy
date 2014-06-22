@@ -1,60 +1,62 @@
 package com.wbillingsley.handy
 
-import scala.collection.concurrent.TrieMap
-
 /**
- * A concurrent mutable cache for LazyIds. 
+ * A concurrent mutable cache for Id and LookUps
  */
 class LookUpCache {
-  
-  /*
-   * A mutable map of LazyId[T, K] to Ref[T] for any T.
-   * 
-   * The store method maintains this constraint.
-   */
-  private val cache = TrieMap.empty[LazyId[_, _], Ref[_]]
-  
-  private def find[T, K](l:LazyId[T, K]):Option[Ref[T]] = {    
-    val tup = cache.get(l)
-    
-    // Note that the store method maintained the constraint in T
-    tup map { _.asInstanceOf[Ref[T]] }
+
+  import java.util.concurrent
+
+  case class LookUpPair[T,K](id:Id[T,K], lu:LookUp[T,K])
+
+  private val cache = new concurrent.ConcurrentHashMap[LookUpPair[_,_],Ref[_]]()
+
+  // Note that we constrain the T -> Ref[T] relationship by what we put in the map
+  private def get[T,K](pair:LookUpPair[T,K]):Option[Ref[T]] = Option(cache.get(pair).asInstanceOf[Ref[T]])
+
+  // Note that we constrain the T -> Ref[T] relationship by what we put in the map
+  private def storeAndLookUp[T,K](pair:LookUpPair[T,K]):Ref[T] = {
+    val r:Ref[T] = pair.lu.one[K](pair.id)
+    store(pair, r)
   }
-  
-  private def store[T, K](l:LazyId[T, K], r:Ref[T]) = {    
-    cache.put(l, r)
+
+  private def store[T,K](pair:LookUpPair[T,K], r:Ref[T]):Ref[T] = {
+    cache.put(pair, r)
     r
-  }  
-  
-  def lookUp[T, K, KK](rbi: RefById[T, K]):Ref[T] = {    
-    lookUp(LazyId(rbi.id)(rbi.lookUpMethod))
   }
-  
-  def lookUp[T, K, KK](li: LazyId[T, K]):Ref[T] = {    
-    find(li).getOrElse(store(li, li))
-  }  
-    
-  def remember[T, KK](r:Ref[T])(implicit g: GetsId[T, KK], lu:LookUpOne[T, KK]) = {
-    val key = r.refId
-    val stored = key flatMap { k => store(LazyId(k)(lu), r) }
-    stored orIfNone r
+
+  /**
+   * Looks up the Id in the cache, or looks it up and stores it in the case of a cache miss.
+   */
+  def lookUp[T,K](id:Id[T,K])(implicit lu:LookUp[T,K]):Ref[T] = {
+    val pair = LookUpPair(id, lu)
+    get(pair) getOrElse storeAndLookUp(pair)
   }
-  
-  def apply[T, KK](r: Ref[T])(implicit g: GetsId[T, KK], lu:LookUpOne[T, KK]):Ref[T] = {
+
+  def lookUpOrStore[T, KK](r: Ref[T])(implicit g: GetsId[T, KK], lu:LookUp[T, KK]):Ref[T] = {
     r match {
-      case rbi:RefById[T, _] => lookUp(rbi)
-      case li:LazyId[T, _] => lookUp(li)
-      case r:Ref[T] => remember(r)
+      case li:LazyId[T, KK] => {
+        val rPair = for {
+          id <- li.refId(g)
+        } yield LookUpPair(id, lu)
+
+        rPair flatMap { pair =>
+          get(pair) getOrElse storeAndLookUp(pair)
+        }
+      }
+      case r:Ref[T] => {
+        r.refId flatMap { id =>
+          val pair = LookUpPair(id, lu)
+          store(pair, r)
+        }
+      }
     }
-  }  
-
-  def apply[T, TT >: T, K, KK](rbi: RefById[T, K])(implicit g: GetsId[T, KK]):Ref[T] = {
-    lookUp(rbi)
   }
 
-  def apply[T, TT >: T, K, KK](li: LazyId[T, K])(implicit g: GetsId[T, KK]):Ref[T] = {
-    lookUp(li)
-  }
-  
-  
+  /**
+   * Looks up the Id in the cache, or looks it up and stores it in the case of a cache miss.
+   */
+  def apply[T,K](id:Id[T,K])(implicit lu:LookUp[T,K]):Ref[T] = lookUp(id)(lu)
+
+  def apply[T, K](r: Ref[T])(implicit g: GetsId[T, K], lu:LookUp[T, K]):Ref[T] = lookUpOrStore(r)(g, lu)
 }

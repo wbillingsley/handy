@@ -8,14 +8,16 @@ class LookUpCacheSpec extends Specification {
       
   
   "LookUpCache" should {
-    
-    "cache a reference" in {      
+
+    // Necessary to import the lookup methods
+    import DB._
+
+    "cache a reference" in {
       val cache = new LookUpCache      
-      
-      // Necessary to import the lookup methods
-      import DB._
-      
-      val a = for (p <- cache(LazyId(1)[Page])) yield p.id
+
+      val refOne = LazyId(1).of[Page]
+
+      val a = for (p <- cache(refOne)) yield p.id.id
       a.toFutOpt must be_==(Some(1)).await
     }    
       

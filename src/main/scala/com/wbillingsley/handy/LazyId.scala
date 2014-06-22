@@ -4,17 +4,19 @@ package com.wbillingsley.handy
  * A Ref by id, that uses a lazy val to cache the result of looking it up.
  * Generally you should use this
  */
-case class LazyId [T, K](id: K, lookUpMethod:LookUpOne[T, K]) extends Ref[T] with IdImmediate[T] {
+case class LazyId [T, K](nakedId: K, lookUpMethod:LookUpOne[T, K]) extends Ref[T] with IdImmediate[T] {
 
-  val rbi = new RefById(id, lookUpMethod)
+  import Id._
+
+  def id = nakedId.asId[T]
   
-  lazy val lookUp = rbi.lookUp
+  lazy val lookUp = lookUpMethod(id)
   
-  def refId[TT >: T, KK](implicit g:GetsId[TT, KK]) = rbi.refId(g)
+  override def refId[K](implicit g:GetsId[T, K]) = immediateId(g)
 
-  def getId[TT >: T, KK](implicit g:GetsId[TT, KK]) = rbi.getId(g)
+  def getId[K](implicit g:GetsId[T, K]) = g.canonical[T](nakedId)
 
-  def immediateId[TT >: T, KK](implicit g:GetsId[TT, KK]) = rbi.immediateId(g)
+  override def immediateId[K](implicit g:GetsId[T, K]) = g.canonical[T](nakedId)
   
   def fetch = lookUp.fetch
   
@@ -42,20 +44,19 @@ case class LazyId [T, K](id: K, lookUpMethod:LookUpOne[T, K]) extends Ref[T] wit
 object LazyId {
 
   class JustType[T] {
-    def apply[K](id: K)(implicit lookUpMethod:LookUpOne[T, K]) = new LazyId[T, K](id, lookUpMethod)
+    def apply[K](id: K)(implicit lookUpMethod:LookUp[T, K]) = new LazyId[T, K](id, lookUpMethod.one)
   }
 
   def of[T] = new JustType[T]
 
   class JustId[K](val id:K) extends AnyVal {
-    def apply[T](implicit lookUpMethod:LookUpOne[T, K]) = new LazyId(id, lookUpMethod)
-    def of[T](implicit lookUpMethod:LookUpOne[T, K]) = apply(lookUpMethod)
-
-    def whichIs[T](r:Ref[T]) = new LazyId(id, LookUpOne.AlwaysReturns(r))
+    def apply[T](implicit lookUp:LookUp[T, K]) = new LazyId[T,K](id, lookUp.one)
+    def of[T](implicit lookUp:LookUp[T, K]) = apply(lookUp)
+    def ofOne[T](implicit lookUp:LookUpOne[T, K]) = new LazyId(id, lookUp)
   }
 
   def apply[K](id:K) = new JustId(id)
 
-  def empty[T] = new LazyId[T,Any](None, LookUp.empty)
+  def empty[T] = new LazyId[T,Any](None, LookUp.empty[T,Any].one)
 
 }

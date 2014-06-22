@@ -54,9 +54,9 @@ object Ref {
     def itself = RefItself(it) 
   }
   
-  def fromOptionId[T, K](opt: Option[K])(implicit lookUp:LookUpOne[T, K]) = {
+  def fromOptionId[T, K](opt: Option[K])(implicit lookUp:LookUp[T, K]) = {
     opt match {
-      case Some(id) => new LazyId(id, lookUp)
+      case Some(id) => new LazyId(id, lookUp.one[K])
       case None => RefNone
     }
   }
@@ -67,6 +67,8 @@ object Ref {
       case None => RefNone
     }
   }
+
+  implicit def fromFuture[T](fut: Future[T])(implicit ec:ExecutionContext) = new RefFuture(fut)(ec)
   
   /** 
    * FlatMap from one to one returns a singular Ref.
@@ -142,7 +144,7 @@ object Ref {
   def itself[T](item: T) = RefItself(item)
     
   
-  def apply[T, K](clazz : scala.Predef.Class[T], opt: Option[K])(implicit lookUp:LookUpOne[T, K]) = fromOptionId(opt)(lookUp)
+  def apply[T, K](clazz : scala.Predef.Class[T], opt: Option[K])(implicit lookUp:LookUp[T, K]) = fromOptionId(opt)(lookUp)
 
   def apply[T](opt: Option[T]) = fromOptionItem(opt)
   
@@ -170,7 +172,7 @@ trait Ref[+T] extends RSuper[T] {
   /**
    * Returns an ID for the object only if one is immediately available (ie, not for incomplete futures)
    */
-  def immediateId[TT >: T, K](implicit g:GetsId[TT, K]):Option[K]
+  def immediateId[K](implicit g:GetsId[T, K]):Option[Id[T,K]] = None
 
   /**
    * Note that the way this is defined, you can flatMap from a RefOne to a RefMany.
@@ -193,7 +195,12 @@ trait Ref[+T] extends RSuper[T] {
   
   def onComplete[U](onSuccess: T => U, onNone: => U, onFail: Throwable => U):Unit  
 
-  def refId[TT >: T, K](implicit g:GetsId[TT, K]):Ref[K]
+  def refId[K](implicit g:GetsId[T, K]):Ref[Id[T,K]] = Ref(immediateId(g)) orIfNone {
+    for {
+      i <- this
+      id <- Ref(g.getId(i))
+    } yield id
+  }
 
   def toFuture = {
     import scala.concurrent._
@@ -227,7 +234,7 @@ trait Ref[+T] extends RSuper[T] {
  * A {@code Ref} that has an ID that can immediately be got.
  */
 trait IdImmediate[+T] {
-  def getId[TT >: T, K](implicit g:GetsId[TT, K]):Option[K]
+  def getId[K](implicit g:GetsId[T, K]):Option[Id[T,K]]
 }
 
 /**

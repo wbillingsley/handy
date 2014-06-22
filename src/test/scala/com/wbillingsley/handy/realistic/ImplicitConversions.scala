@@ -13,7 +13,7 @@ object ImplicitResponses {
   import scala.concurrent.ExecutionContext.Implicits._
   
   implicit def refRespToFutResp(rp: Ref[Response]) = {
-	val p = promise[Response]
+	val p = Promise[Response]
     
     rp onComplete (
       onSuccess = p success _,

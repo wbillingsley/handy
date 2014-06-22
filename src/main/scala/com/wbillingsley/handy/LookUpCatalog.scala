@@ -31,18 +31,18 @@ class LookUpCatalog {
    * 
    * This is a case class, so that two GeneratedLookups will be equal if they are in the same catalog and lookup the same class.
    */
-  case class GeneratedLookup[T, -K](val lookupClass: Class[T]) extends LookUp[T, K] {
-    def lookUpOne[KK <: K](r:RefById[T, KK]) = {
-      val keyClass = r.id.getClass
+  case class GeneratedLookup[T, K](val lookupClass: Class[T]) extends LookUp[T, K] {
+    def one[KK <: K](id:Id[T, KK]):Ref[T] = {
+      val keyClass = id.getClass
       
       catalog.get((lookupClass, keyClass)) match {
-        case Some(l:LookUp[_, _]) => l.asInstanceOf[LookUp[T,K]].lookUpOne(r)
+        case Some(l:LookUp[_, _]) => l.asInstanceOf[LookUp[T,K]].one(id)
         case _ => RefFailed(new IllegalArgumentException(s"I don't know how to look up a ${lookupClass.getName} with key ${keyClass.getName}"))
       }
     }
     
-    def lookUpMany[KK <: K](r:RefManyById[T, KK]) = {
-      val keyHead = r.rawIds.headOption
+    def many[KK <: K](ids:Ids[T, KK]):RefMany[T] = {
+      val keyHead = ids.ids.headOption
       
       keyHead match {
         case Some(key) => {
@@ -50,7 +50,7 @@ class LookUpCatalog {
           catalog.get((lookupClass, keyClass)) match {
             
             // Note that asInstanceOf here is true because of the constraint in the registration method
-            case Some(l:LookUp[_, _]) => l.asInstanceOf[LookUp[T,K]].lookUpMany(r)
+            case Some(l:LookUp[_, _]) => l.asInstanceOf[LookUp[T,K]].many(ids)
             
             case _ => RefFailed(new IllegalArgumentException(s"I don't know how to look up a ${lookupClass.getName} with key ${keyClass.getName}"))
           }
@@ -65,13 +65,16 @@ class LookUpCatalog {
   /**
    * Generates a specialised lookup that uses the catalog
    */
-  def genLookUp[T,K](lookupClass: Class[T]) = new GeneratedLookup[T, K](lookupClass)
+  def genLookUp[T,K](lookupClass: Class[T]):LookUp[T,K] = new GeneratedLookup[T, K](lookupClass)
 
   /**
    * Creates a LazyId whose LookUp uses the catalog.
    *
    * For example, {@code catalog.lazyId(classOf[Foo], 1)}
    */
-  def lazyId[T, K](clazz:Class[T], id:K) = LazyId(id).of(genLookUp(clazz))
+  def lazyId[T, K](clazz:Class[T], id:K) = {
+    val lu:LookUp[T, K] = genLookUp[T, K](clazz)
+    LazyId(id).of(lu)
+  }
 
 }

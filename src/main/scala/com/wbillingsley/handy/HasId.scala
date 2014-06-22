@@ -1,49 +1,37 @@
 package com.wbillingsley.handy
 
-trait HasId[K] {
-  
-  def id:K
-
+/**
+ * Indicates that an object has an `id` method that will return an `Id` to it.
+ */
+trait HasId[+T, K] {
+  def id:Id[T, K]
 }
 
-trait GetsId[-T, K] {
-  
-  def getId(obj: T): Option[K]
-  
-  def canonical(key:Any): Option[K]
-  
-}
+trait HasStringId[+T] extends HasId[T, String]
 
 /**
- * In places where we want to use an implicit GetsId, but still allow the call
- * if there isn't one (such as EqualsById's equals method), this is used as a
- * default for the implicit argument.  Essentially telling the compiler
- * "If there is no implicit GetsId, it has no id". 
+ * Knows how to get an `Id` from an object
  */
-object GetsNoId extends GetsId[Any, Nothing] {
-  def getId(obj:Any) = None
-  
-  def canonical(key:Any) = None
-}
+trait GetsId[-T, K] {
+  def getId[TT <: T](obj: TT): Option[Id[TT, K]]
 
-
-import scala.util.Try
-
-trait HasStringId extends HasId[String] {
-  
+  def canonical[TT <: T](o:Any):Option[Id[TT,K]]
 }
 
 object HasStringId {
-  
-  implicit object GetsStringId extends GetsId[HasStringId, String] {
-    
-    var pf:PartialFunction[Any, Option[String]] = { 
-      case s:String => Some(s)
-      case _ => None 
+
+  implicit object getsStringId extends GetsId[HasStringId[_], String] {
+    def getId[T <: HasStringId[_]](obj: T) = {
+      import Id._
+
+      val k = obj.id.id
+      Some(k.asId[T])
     }
-    
-	def getId(obj:HasStringId) = Some(obj.id)
-  
-	def canonical(key:Any) = pf(key) 
-  }   
+
+    def canonical[T <: HasStringId[_]](id:Any) = id match {
+      case s:String => Some(Id[T,String](s))
+      case _ => None
+    }
+  }
+
 }

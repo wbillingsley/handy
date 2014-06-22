@@ -22,11 +22,11 @@ case class RefItself[T](val item: T) extends ResolvedRef[T] {
 
   def foreach[U](f: T => U) { f(item) }
   
-  override def getId[TT >: T, K](implicit g:GetsId[TT, K]) = g.getId(item)
+  override def getId[K](implicit g:GetsId[T, K]) = g.getId(item)
 
-  override def refId[TT >: T, K](implicit g:GetsId[TT, K]) = g.getId(item)
+  override def refId[K](implicit g:GetsId[T, K]) = g.getId(item)
 
-  override def immediateId[TT >: T, K](implicit g:GetsId[TT, K]) = g.getId(item)
+  override def immediateId[K](implicit g:GetsId[T, K]) = g.getId(item)
 
   def isTraversableAgain = true
   

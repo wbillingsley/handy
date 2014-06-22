@@ -16,14 +16,14 @@ object RefFuture {
 
 class RefFuture[+T](val future: Future[T])(implicit val executionContext:ExecutionContext) extends Ref[T] {
   
-  def refId[TT >: T, KK](implicit g:GetsId[TT, KK]) = {
+  override def refId[K](implicit g:GetsId[T, K]) = {
     for { t <- this; id <- g.getId(t) } yield id
   }
 
   /**
    * To avoid programs being non-deterministic, we return None even if the Future has already completed
    */
-  def immediateId[TT >: T, KK](implicit g:GetsId[TT, KK]) = None
+  override def immediateId[K](implicit g:GetsId[T, K]) = None
 
   def fetch = {
     try {
@@ -77,14 +77,14 @@ class RefFuture[+T](val future: Future[T])(implicit val executionContext:Executi
 
 class RefFutureRef[+T](val futureRef: Future[Ref[T]])(implicit val executionContext:ExecutionContext = RefFuture.executionContext) extends Ref[T] {
 
-  def refId[TT >: T, KK](implicit g:GetsId[TT, KK]) = {
+  override def refId[K](implicit g:GetsId[T, K]) = {
     for { t <- this; id <- g.getId(t) } yield id
   }
 
   /**
    * To avoid programs being non-deterministic, we return None even if the Future has already completed
    */
-  def immediateId[TT >: T, KK](implicit g:GetsId[TT, KK]) = None
+  override def immediateId[K](implicit g:GetsId[T, K]) = None
 
   def fetch = {
     try {
@@ -184,14 +184,14 @@ class RefFutureRefMany[+T](val futureRef: Future[RefMany[T]])(implicit val execu
 
 class RefFutureOption[+T](val future: Future[Option[T]])(implicit val executionContext:ExecutionContext = RefFuture.executionContext) extends Ref[T] {
 
-  def refId[TT >: T, KK](implicit g:GetsId[TT, KK]) = {
+  override def refId[K](implicit g:GetsId[T, K]) = {
     for { t <- this; id <- g.getId(t) } yield id
   }
 
   /**
    * To avoid programs being non-deterministic, we return None even if the Future has already completed
    */
-  def immediateId[TT >: T, KK](implicit g:GetsId[TT, KK]) = None
+  override def immediateId[K](implicit g:GetsId[T, K]) = None
 
 
   def fetch = {

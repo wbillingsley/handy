@@ -11,12 +11,13 @@ object PageApp {
   
   // Import the lookUp methods from the database
   import DB._
+  import Security._
   
   def setPageContent(loggedInUser:Option[Int], pageId:Option[Int], content:String):Ref[Response] = {
     val u = Ref.fromOptionId[User, Int](loggedInUser)
     val p = Ref.fromOptionId[Page, Int](loggedInUser)
     for {
-      approval <- Approval(u) ask CanEdit(p);
+      approval <- Approval(u) ask canEdit(p);
       page <- p
     } yield {
       page.content = content      
@@ -29,7 +30,7 @@ object PageApp {
     
     for {
       user <- optionally(u);
-      approval <- Approval(user) ask CanCreate;
+      approval <- Approval(user) ask canCreate;
       page <- DB.createPage(user, content)
     } yield {
       Ok("{ \"page\" : \"" + page.content + "\" }")
@@ -42,7 +43,7 @@ object PageApp {
     
     for {
       page <- p;
-      approval <- Approval(u) ask CanRead(page.itself)      
+      approval <- Approval(u) ask canRead(page.itself)
     } yield {
       Ok(page.content)
     }

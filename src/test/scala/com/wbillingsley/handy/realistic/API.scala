@@ -11,7 +11,7 @@ case object Viewer extends Role
 case object Editor extends Role
 case object Admin extends Role
 
-trait AppItem extends HasId[Int]
+trait AppItem[T] extends HasId[T, Int]
 
 object AppItem {
 
@@ -19,16 +19,21 @@ object AppItem {
    * Normally this would be part of your database classes, but here we're being lazy and making Int IDs 
    * part of the API.
    */
-  implicit object gg extends GetsId[HasId[Int], Int] {
-    def getId(obj: HasId[Int]) = Some(obj.id)
+  implicit def gg[T] = new GetsId[HasId[T, Int], Int] {
+    import Id._
 
-    def canonical(key: Any) = key match {
-      case k: Int => Some(k)
+    def getId[TT <: HasId[T, Int]](obj: TT) = {
+      val id = obj.id.id
+      Some(id.asId[TT])
+    }
+
+    def canonical[TT <: HasId[T, Int]](key: Any) = key match {
+      case k: Int => Some(k.asId[TT])
       case _ => None
     }
   }
 }
 
-trait User extends AppItem { val id: Int; var name: String; var roles: Set[Role] }
-trait Page extends AppItem { val id: Int; def createdBy: Ref[User]; var content: String; var isPublic: Boolean }
+trait User extends AppItem[User] { def id: Id[User,Int]; var name: String; var roles: Set[Role] }
+trait Page extends AppItem[Page] { def id: Id[Page,Int]; def createdBy: Ref[User]; var content: String; var isPublic: Boolean }
 

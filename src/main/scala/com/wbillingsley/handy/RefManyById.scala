@@ -5,15 +5,15 @@ import Ref._
 /**
  * Refers to many items by their ID.
  */
-case class RefManyById[T, K](val rawIds: Seq[K], lookUpMany:LookUpMany[T, K], lookUpOne:LookUpOne[T, K]) extends RefMany[T] {
+case class RefManyById[T, K](val rawIds: Seq[K], lu:LookUp[T, K]) extends RefMany[T] {
+
+  import Ids._
+
+  def getIds = rawIds.asIds[T]
+
+  def lookUp = lu.many(getIds)
   
-  def getIds[TT >: T, KK](implicit g:GetsId[TT, KK]) = {
-	for (i <- rawIds; c <- g.canonical(i)) yield c
-  }  
-  
-  def lookUp = lookUpMany.lookUpMany(this)
-  
-  def first = Ref.fromOptionId(rawIds.headOption)(lookUpOne)
+  def first = Ref.fromOptionId(rawIds.headOption)(lu)
   
   def fetch = lookUp.fetch
     
@@ -39,14 +39,6 @@ case class RefManyById[T, K](val rawIds: Seq[K], lookUpMany:LookUpMany[T, K], lo
 
 object RefManyById {
 
-  def apply[T,K](rawIds:Seq[K], lookUp:LookUp[T, K]):RefManyById[T,K] = apply(rawIds, lookUp, lookUp)
-  
-  def LooksUpNothing[T] = new LookUp[T, Any] {
-    override def lookUpOne[KK <: Any](r:RefById[T,KK]) = RefNone
-    
-    override def lookUpMany[KK <: Any](r:RefManyById[T,KK]) = RefNone
-  }
-
   /**
    * An empty RefMany that always resolves to nothing.
    *
@@ -54,8 +46,8 @@ object RefManyById {
    * return a RefManyById[T, Any]
    */
   def empty[T,K] = {
-    val nada = LooksUpNothing[T]
-    new RefManyById[T,K](Seq.empty,nada, nada)
+    val nada = LookUp.empty[T,K]
+    new RefManyById[T,K](Seq.empty,nada)
   }
 
   class JustType[T] {

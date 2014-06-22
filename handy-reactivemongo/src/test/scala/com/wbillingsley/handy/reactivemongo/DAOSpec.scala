@@ -13,10 +13,13 @@ object DAOSpec {
 
   val testdb = new DBConnector
   
-  case class Thing(id:String) extends HasStringId
+  case class Thing(_id:String) extends HasStringId[Thing] {
+    import Id._
+    def id = _id.asId[Thing]
+  }
   
   object ThingDAO extends DAO {
-    
+
     type DataT = Thing
     
     val clazz = classOf[Thing]
@@ -36,7 +39,10 @@ object DAOSpec {
     }
   }
   
-  case class Other(id:String) extends HasStringId
+  case class Other(_id:String) extends HasStringId[Other] {
+    import Id._
+    def id = _id.asId[Other]
+  }
   
   object OtherDAO extends DAO {
     

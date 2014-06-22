@@ -28,7 +28,7 @@ object WebFramework {
       case "page" :: "create" :: "POST" :: Nil => PageApp.createPage(loggedInUser, data.get("content") getOrElse "No content")
       case "page" :: id :: "GET" :: Nil => PageApp.viewPage(loggedInUser, Some(id.toInt))
       case "page" :: id :: "POST" :: Nil => PageApp.setPageContent(loggedInUser, Some(id.toInt), data.get("content") getOrElse "No content")
-      case _ => future { PlainResponse(404, "Not found") }
+      case _ => Future { PlainResponse(404, "Not found") }
     }
   }
 

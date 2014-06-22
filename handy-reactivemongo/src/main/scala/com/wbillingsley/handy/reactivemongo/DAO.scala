@@ -10,16 +10,16 @@ import Ref._
 import scala.concurrent.ExecutionContext
 
 trait DAO {
-  
-  type DataT <: HasStringId
-  
+
+  type DataT <: HasStringId[DataT]
+
   import RefFuture.executionContext
   
   implicit object LookUp extends LookUp[DataT, String] {
     
-    def lookUpOne[K <: String](r:RefById[DataT, K]) = byId(r.id)
+    def one[K <: String](r:Id[DataT, K]) = byId(r.id)
     
-    def lookUpMany[K <: String](r:RefManyById[DataT, K]) = manyById(r.rawIds)
+    def many[K <: String](r:Ids[DataT, K]) = manyById(r.ids)
     
   }
 
@@ -55,24 +55,28 @@ trait DAO {
    * The execution context (ie, thread pool) that futures should be created on.
    */
   implicit def executionContext:ExecutionContext;
+
+  implicit def IdWriter[T] = new BSONWriter[Id[T, String], BSONValue] {
+    def write(r:Id[T, String]) = {
+      if (db.useBSONIds) {
+        BSONObjectID(r.id)
+      } else {
+        BSONString(r.id)
+      }
+    }
+  }
   
   /**
    * Implicit conversion that allows LazyId[_ ,_] to be written as BSON
    */
-  implicit def RefWithStringIdWriter[T <: HasStringId] = new BSONWriter[RefWithId[T], BSONValue] {
-    def write(r:RefWithId[T]) = {
-      if (db.useBSONIds) {
-        r.getId.map(BSONObjectID(_)).getOrElse(BSONNull)
-      } else {
-        r.getId.map(BSONString(_)).getOrElse(BSONNull)
-      }
-    }
+  implicit def RefWithStringIdWriter[T <: HasStringId[T]] = new BSONWriter[RefWithId[T], BSONValue] {
+    def write(r:RefWithId[T]) = BSONArray(r.getId[String].map(IdWriter[T].write(_)))
   }
 
   /**
    * Implicit conversion that allows RefMany[_] to be written as BSON
    */
-  implicit def RefManyByStringIdWriter[T <: HasStringId] = new BSONWriter[RefManyById[T, String], BSONValue] {
+  implicit def RefManyByStringIdWriter[T <: HasStringId[T]] = new BSONWriter[RefManyById[T, String], BSONValue] {
     def write(r:RefManyById[T, String]) = {
       if (db.useBSONIds) {
         BSONArray(r.rawIds.map(BSONObjectID(_)))
@@ -112,7 +116,7 @@ trait DAO {
    * Fetches and deserializes items by their ID
    */
   def byId(id:String) = {
-    val fo = coll.find(BSONDocument(idIs(id))).one[DataT]    
+    val fo = coll.find(BSONDocument(idIs(id))).one[DataT]
     new RefFutureOption(fo)
   } 
   
@@ -130,7 +134,7 @@ trait DAO {
      * As the order of the items is unspecified, build a map from id -> item
      */
     val rMap = for (trav <- rMany.toRefOne) yield {
-      val pairs = for (item <- trav) yield item.id -> item
+      val pairs = for (item <- trav) yield item.id.id -> item
       val map = Map(pairs.toSeq:_*)
       map
     }
