@@ -1,225 +1,173 @@
-*(This is a bit of a work in progress, and might be edited a lot)*
-
 ## Handy
 
-**Handy** is a library I've been writing that has two useful things in it: **Ref** and **Approval**
+**Handy** is a small library that makes writing asynchronous applications easier. It has a simple but expressive way of writing security rules. It has a simple way of handling lazy lookups. It keeps everything neatly separable, so you're not too tighly coupled to your database or web framework.
 
-Essentially, it lets me write my application in a way that is concise, expressive, and straightforward, while also making it easy for me to change database layer or web framework without impacting much on the code in the middle.
+### How to obtain it
 
-Part of the idea is that this library is *small*, which means there's not much complexity going on, and modifying the library to suit your application if it's missing something you need is easy.
+Add this to your build.sbt file
 
-The Intelligent Book has shifted database and web-framework a few times in its lifetime, so I've found it useful.
+    resolvers += Resolver.sonatypeRepo("snapshots")
+
+    libraryDependencies += "com.wbillingsley" %% "handy" % "0.6.0-SNAPSHOT"
+
+There are also some (entirely optional and incredibly small) modules for working with Play! 2.0 web framework, or working with MongoDB, though they are less mature: 
+
+    libraryDependencies += "com.wbillingsley" %% "handy-play" % "0.6.0-SNAPSHOT"
+
+    libraryDependencies += "com.wbillingsley" %% "handy-reactivemongo" % "0.6.0-SNAPSHOT"
+
+
+## Why handy?
+
+I don't like my applications to be too closely tied to any particular web framework or database driver. I worry that if they are, I'll spend too much time having to chase their updates. I also like to make it easy for me to use different databases together in the same application. 
+
+So I like to make sure that the places where I'm converting from my application API types to their web framework or database types (and calling their APIs) is small and well-defined. 
+
+And I like my permission rules to be expressed in my code, not in the web framework. Because that way I can do things like decide to drop the web framework and make a native app without having to rewrite all my permission rules. And sometimes those permission rules are things like "students can only edit their work before the assignment deadline" that are hard to express in most web application security frameworks, but dead easy with handy.
+
+I also like my application to be asynchronous and make that easy to. 
+
+So, what's in handy...
+
+### Id
+
+This is a typed ID class. That means it's impossible to accidentally assign an ID of one thing (eg, a user ID) to a lookup that expects something else (eg, a page).  
+
+These are all equivalent:
+
+    "1234".asId[User]
+    Id("1234").of[User]
+    new Id[User, String]("1234")
+    
+If we want to keep a sequence of Ids, we use `Ids`
+
+    Seq(1,2,3).asIds[User]
+    Ids(Seq(1,2,3).of[User]
+    new Ids[User, Int](Seq(1, 2, 3))
+    
+    
+### Lookups
+
+A `LookUp` bundles two function together.
+
+* For `Id`, a function `Id[T,K] => Ref[T,K]`
+* For `Ids`, a function `Ids[T,K] => RefMany[T]`
+
+I'll explain `Ref` and `RefMany` in a moment (they are very simple), but for the moment just read `Ref[T]` as "that's probably a `Future[T]`", and `RefMany[T]` as "that's probably a `Future[TraversableOnce[T]]`
+
+Because our lookups are just a pair of functions, we can happily have different lookups for different types of item. And to use a different database, we just use a lookup containing a different function.
+
+### LazyId
+
+A `LazyId` has an `Id` and a lookup function. If you call lookup on it, it will store the result in a lazy val so that next time you call lookup it won't need to call the function again.
+
+But if you don't call lookup, and just ask for the ID, it'll just give you the ID.
+
+The easy way to get a `LazyId` is
+
+    "123".asId[User].lazily(lookup)
+    
+or if your lookup is implicitly in scope
+
+    "123".asId[User].lazily
+
 
 ### Ref
 
-**Ref** is about referring to things. 
+`Ref` is a little type that lets us treat `Future[T]`, `LazyId[T, K]`, `Option[T]`, `Try[T]`, and a few others as "a reference to something".  `Ref` is a trait, and there are little wrappers (adapters) for Future, Try, and Option. LazyId itself meets the trait.
 
-Sometimes we have objects to pass around. Sometimes we've only got the ID of the object, and haven't gone and looked it up yet.
-
-    def doSomethingWithUser(user: Ref[User]) { ... }
-
-    doSomethingWithUser(RefById(classOf[User], 1234))
-    doSomethingWithUser(RefItself(fred))
-    
-    // or equivalently for the last one
-    doSomethingWithUser(fred.itself)
-
-So, we can have a method that accepts a `Ref[User]` and don't have to decide in advance whether that method will actually need to look the user up.
-
-    def doSomethingWithUser(user: Ref[User]) = { ... }
-
-When a **RefById** is looked up, it could turn out that:
-
-1. The record is in the database, or
-2. The record isn't in the database, or
-3. Something goes pop trying to find out.
-
-And that could be resolved synchronously or asynchronously. 
-
-Different databases might want to return quite different types -- as a simplistic example, perhaps, an `Option[Item]` from one database, but a `Future[Item]` from another. And if our app has more than one database (it's been known to happen) we might even get a different kind of enclosure for different objects.
-
-    val fetchedUser = SimpleBlockingDB.getUser(1234) // Option[User]
-    val fetchedPage = SimpleNonBlockingDB.getPage(1234) // Future[Page]
-
-However, it's easy to get a `Ref` from any of these. We have a small but extensible number of `Ref` types that can be returned: `RefFuture`, `RefItself`, `RefNone`, `RefFailed`, etc. That way we can just write our code against `Ref`, and not be coupled too closely to our database types.
-
-`Ref` is also fairly useful when writing `User` and `Page` themselves. For instance, `Ref`ing Salat case classes is rather easy:
-
-    case class Page extends api.Page(
-      _id: BSONObjectId = new BSONObjectId(),
-      var name:String,
-      var content:String,
-      val _createdBy:ObjectId
-    ) {
-    
-      // All we need to do to turn createdBy into a Ref:
-      def createdBy = RefById(classOf[User], _createdBy)
-    
-    }
-
-The upshot of this so far is we can quickly write how our program works in terms of `Ref`, and not have to worry too much about if we need to change database or change database driver -- even if we change from blocking to non-blocking and suddenly have `Future`s to deal with, we just return a `RefFuture` that makes it still look like a `Ref`.
-
-So the following code
-
-    for (p <- pageById; u <- p.createdBy; org <- u.organisation) yield org
-  
-Will still return a `Ref[Organisation]` even if pages are looked up synchonrously and users are looked up asynchronously.
-
-
-### Plurality
-
-With `RefMany`, we can have the following
-
-    val approval = Approval(loggedInUser)
-    val page = RefById(classOf[Page], pageId)
-    val results = for (
-      a <- approval ask CanRead(page);
-      p <- page;
-      h <- p.historyItems 
-    ) yield { h.toJson }
-
-and the outcome is a `RefMany[JSON]`. And again we can decide later what to have underlying that.
-
-And we have a couple of very human-meaningful types to talk about in APIs.
-
-    def owner: Ref[User]
-    
-    def editors: RefMany[User]
-
-    def edit(page: Ref[Page], content:String)
-    
-    def bulkEmail(recipients: RefMany[Contact])    
-
-If we wanted, we could define queries or all sorts of things to return a `RefMany`.
+It's particularly useful because it lets us declare functions that take a `Ref`, and we can happily pass either a `Future` or a `LazyId` to them. And the body of the function can then decide whether it needs to get the value or just its ID. You'll see an example of this being surprisingly useful when we talk about permissions.
 
 
 ### Approval
 
-So, **Approval** suddenly turned up in our last example. It's designed to play nicely with `Ref`.
+`Approval` is a little wallet that remembers what a user has been approved to do in a call. You call it like this
 
-An `Approval` is essentially a cache of permissions. Ask it for a permission
+    approval ask permission
+ 
+It returns a `Ref[Approved]` (which can be a wrapper around `Future[Approved]`, or `Try[Approved]` etc).
 
-    approval ask CanDoFoo
+`Approved(message)` just indicates something has been approved.
+`Refused(message)` is an exception indicating something has not been approved -- and works well with `Future`'s and `Try`'s ways of indicating failure. 
+
+### Permissions
+
+Permissions in handy are objects. So that they can be cached. There are two simple kinds:
+
+* Unique permissions
+* Permissions on an Id
+
+
+Permissions on an Id take a parameter. But they've been engineered so that the parameter can be a `Ref`, but the equality check for the permission uses the Id.
+
+So:
+
+    canEditCourse(Future{ course1 }.toRef) == canEditCourse(1.asId[Course].lazily)
+
+Why is that helpful? Well, `Approval` caches permissions that have already been approved. So consider:
+
+    approval ask canEditCourse(1.asId[Course].lazily)
     
-and you'll get a `Ref[Approved]` coming back. In the synchronous case, that'll be a `RefItself[Approved]` or a `RefFailed[Refused(message)]`. In the asynchronous case, it might well be a `RefFuture[Approved]`. It's up to you.
+If permission to edit course 1 has already been approved, it's in the `Approval`'s cache and the `LazyId` won't even need to be looked up -- we don't need to make a database call. But if it has not already been approved, then it'll need to be resolved, and that probably means looking up the page.
 
-But if it's successful, the `Approval` will also cache the permission you asked it for. So in the synchronous case,
+So that's also a neat little example of why having `Ref` helps. Our code stays incredibly simple, but it also helps us avoid unnecessary calls to the database.
 
-    val a1 = Approval ask CanDoFoo
-    val a2 = Approval ask CanDoFoo
-    
-will only ask `CanDoFoo` to resolve whether or not the user can do this once. 
+Why might a permission be asked for more than once? Well, handy also makes it easy for our permissions to *delegate*.
 
-And, `CanDoFoo` gets given a reference to the `Approval` when it's asked. This is so that permissions can resolve to different permissions that might already have been granted:
+Here's how a permission might be defined:
 
-    case class CanEditPage(page: Ref[Page]) extends Perm[User] {
-      def resolve(prior: Approval[User]) = page flatMap { 
-        if (_.isProtected) {
-          prior ask CanEditProtected
-        } else {
-          prior ask CanEditUnprotected
-        }        
-      }    
-    }
-    
-
-
-
-### Unpacking it all
-
-So your business logic is now returning a `Ref[Something]` or a `RefMany[Something]`. Your web framework meanwhile needs to write out HTTP responses. And different web frameworks have different classes for doing this.
-
-So, we do is use an implicit method or two to convert your Refs into whatever your web framework wants.
-
-Now, if you know you're going to be doing everything synchronously, you can just call `ref.fetch` to turn your `Ref` into a `ResolvedRef` and pattern match on it.
-
-    implicit def jsonRefToResponse(r: Ref[JSON]) = {
-    
-      r.fetch match {
-        case RefItself(thing) => Ok(toJson(thing))
-        case n:RefNone => NotFound()
-        case RefFailed(exc) => exc match {
-          case Refused(reason) => Forbidden(reason)
-          case _ => InternalServerError(exc)
-        }      
-      }
-    
+    val canEditAssignment = Perm.onId[User, Assignment] {
+      case (approval, refAssgt) => for {
+        assgt <- refAssgt
+        approved ask canEditCourse(assgt.course)
+      } yield approved
     }
 
-On the other hand if you are doing anything asynchronously, you'll probably want to turn it into an asynchronous response.
+So to be allowed to edit this assignment, you must be allowed to edit the course. So you can imagine that you could easily have two permissions that require a common permission, and it's useful if that common permission has been cached.
 
-    implicit def jsonRefToResponse(r: Ref[JSON]):Future[Response] = {
-      
-      Async {      
-        val prom = promise[Response]
-        r onComplete {
-          onSuccess = { json => prom success Ok(json) }
-          onNone = { prom success NotFound() }
-          onFail = _ match {
-            case Refused(msg) => prom success Forbidden(msg)
-            case t:Throwable => prom success InternalServerError(t.getMessage)
-          }
-        }
-      }    
-          
-    }
+### GetsId
+
+`GetsId` knows how to get an object's id, and knows how to "canonicalise" an id.
+
+Its main use is that if you have a `Future { myobj }.toRef`, we need to know how to get an ID from `myobj` (so that we can do cache checks in the approvals wallet).
+
+It has a second method, `canonicalise`, which also needs to be set. This can be used to do things like convert an Int to String if you use string IDs but sometimes pass ints around. But it's main "need" is internal -- `LazyId[T,K].getId` calls canonicalise because otherwise the type system can't be sure you created the `LazyId` with the same kind of id that `GetsId` returns.
+
+### LookUpCache
+
+A `LookUpCache` is a simple concurrent mutable cache that lets you cache the lookup results of `Id` and `LazyId`. 
+
+    val cached = cache(fooById)
+
+
+
+### Another useful thing about Ref
+
+Because we have `Ref`, being this very simple little unifying type, in a typical application, most function just end up being a single `for { ... }` block.
+
+For example:
+
+    def updatePage(approval:Approval[User], pageId:String, data:Json) = {
+      rPage = pageId.asId[Page].lazily
+      for { 
+        approved <- approval ask editPage(rPage)
+        updated <- PageModel.update(rPage, data)
+        json <- PageToJson.toJson(updated)
+      } yield json
+    }        
+
+Our main API calls become simple `for` blocks across each piece of behaviour we need to do. And those lower level parts are all neatly separable, so we can swap databases (or even use different databases easily in the same API call).
+
+
+### Plurality
+
+`RefMany` is the plural equivalent of `Ref`. But they also combine neatly in for blocks.  Suppose a group contains the ids of several users.
+
+    for {
+      group <- refGroup
+      user <- group.users.lookup
+    } yield user.firstName
     
-That might look a bit of a pain, but you only have to do it once. 
+The result is a `RefMany[String]` of every user's first name.
 
-Most of your controllers look like this:
-
-    val approval = Approval(loggedInUser)
-    val page = RefById(classOf[Page], pageId)
-    val results = for (
-      a <- approval ask CanRead(page);
-      p <- page
-    ) yield { p toJson }
-
-and implicitly convert into a response.    
-
-### Unpacking RefMany
-
-We can do similar things with `RefMany`, but for instance in the asynchronous case we might want to take advantage of `Iteratees`.
-
-For instance, this is a snippet of code from the Intelligent Book (using the Play Framework).  Getting the `RefMany` is seven lines of code.  Converting it to an enumerator is one line of code: `comments.enumerator through enumeratee`. The bulk of the method is an enumeratee for converting Comments to JSON array mark-up.
-
-You might wonder why use an Enumerator and Iteratee for this, when there's only around 50 comments being returned. The reason is that `IBJson.toJson(c.itself)` might involve another database request to get the commenter's name etc -- I haven't worried too much yet about denormalising 
-
-
-    def getRecentChatComments(
-      bookId:String, afterId:Option[String], beforeId:Option[String]
-    ) = WithEm { Action { request =>
-    
-	   for (
-	       book <- RefById(classOf[Book], bookId);
-	       tok = Approval(SessionStuff.loggedInReader(request))
-	   ) yield {
-	    val before = Ref.fromOptionId(classOf[ChatComment], beforeId)
-	    val after = Ref.fromOptionId(classOf[ChatComment], afterId)
-	    val comments = ChatModel.getRecentChatComments(
-	      book.itself, after, before, tok
-	    )
-     
-        // This converts an Enumerator[ChatComment] to an Enumerator[String]
-	    var sep = ""
-	    val enumeratee = Enumeratee.mapM[ChatComment]{ c => 
-	      (for (json <- IBJson.toJson(c.itself)) yield {
-	        val r = json.toString + sep
-	        sep = ","
-	        r
-	      }).toFuture 
-	    } compose Enumeratee.filter(!_.isEmpty) compose Enumeratee.map(_.get)
-
-        val enumerator = Enumerator("{ \"comments\" : [") andThen 
-          (comments.enumerator through enumeratee) andThen 
-          Enumerator("] }")
-          
-        ChunkedResult[String](
-	      header = ResponseHeader(Status.OK, /* .. elided headers .. */),
-	      chunks = {iteratee:Iteratee[String, Unit] => enumerator.apply(iteratee) }
-	    )	    
-      }
-    }}
-    
-    
  
