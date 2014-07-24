@@ -35,45 +35,14 @@ object RefConversions {
   
   implicit class EnumerateRef[T](val r:Ref[T]) {
 
-    def enumerate(implicit executionContext:ExecutionContext) = {
-      new Enumerator[T] {
-        def apply[A](it: Iteratee[T, A]) = {
-
-          r match {
-            case RefItself(item) => {
-              it.pureFold {
-                case Step.Cont(k) => k(Input.El(item))
-                case _ => it
-              }
-            }
-            case RefNone => Future.successful(it)
-            case RefFailed(exc) => {
-              it.pureFold {
-                case Step.Cont(k) => Step.Error(exc.getMessage, Input.Empty).it
-                case _ => it
-              }
-            }
-            case _ => {
-              it.fold {
-                case Step.Cont(k) => {
-                  val p = scala.concurrent.Promise[Iteratee[T, A]]()
-                  r.onComplete(onSuccess={ el =>
-                    p.success(k(Input.El(el)))
-                  }, 
-                  onNone = {
-                    p.success(it)
-                  }, 
-                  onFail= { exc =>
-                    p.success(Step.Error(exc.getMessage, Input.Empty).it)
-                  })
-                  p.future
-                }
-                case _ => Future.successful(it)
-              }
-            }
-          }
-        }
+    def enumerate(implicit executionContext:ExecutionContext):Enumerator[T] = {
+      val futureEnum = for {
+        opt <- r.toFutOpt
+      } yield opt match {
+        case Some(item) => Enumerator[T](item)
+        case None => Enumerator.empty[T]
       }
+      Enumerator.flatten(futureEnum)
     }
 
   }

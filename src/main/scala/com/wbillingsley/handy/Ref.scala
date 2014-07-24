@@ -193,8 +193,6 @@ trait Ref[+T] extends RSuper[T] {
 
   def foreach[U](func: T => U):Unit 
   
-  def onComplete[U](onSuccess: T => U, onNone: => U, onFail: Throwable => U):Unit  
-
   def refId[K](implicit g:GetsId[T, K]):Ref[Id[T,K]] = Ref(immediateId(g)) orIfNone {
     for {
       i <- this
@@ -202,32 +200,15 @@ trait Ref[+T] extends RSuper[T] {
     } yield id
   }
 
-  def toFuture = {
-    import scala.concurrent._
-
-    val p = Promise[T]()
-    this onComplete(
-      onSuccess = p success _,
-      onNone = p failure new NoSuchElementException(),
-      onFail = p failure _
-      )
-    p.future
-  }
+  def toFuture:Future[T]
 
   /**
    * Converts this Ref to a Future[Option[T]] that might or might not immediately complete.
    */
-  def toFutOpt:Future[Option[T]] = {
-    import scala.concurrent._
-    
-    val p = Promise[Option[T]]()
-      this onComplete(
-        onSuccess = p success Some(_),        
-        onNone = p success None,
-        onFail = p failure _
-      )
-      p.future
-  }
+  def toFutOpt:Future[Option[T]]
+
+  def onComplete[U](onSuccess: T => U, onNone: => U, onFail: Throwable => U):Unit
+
 }
 
 /**

@@ -1,5 +1,7 @@
 package com.wbillingsley.handy
 
+import scala.concurrent.Future
+
 
 /**
  * A reference that has nothing at the end of it, either through being a failed reference or the empty reference
@@ -65,7 +67,11 @@ case class RefFailed(exception: Throwable) extends RefNothing {
        
   def onComplete[U](onSuccess: Nothing => U, onNone: => U, onFail: Throwable => U) { 
     onFail(exception)
-  } 
+  }
+
+  def toFuture = Future.failed(exception)
+
+  def toFutOpt = Future.failed(exception)
   
   def fold[B](initial: =>B)(each: (B, Nothing) => B) = this
   
@@ -99,6 +105,10 @@ case object RefNone extends RefNothing {
   def onComplete[U](onSuccess: Nothing => U, onNone: => U, onFail: Throwable => U) { 
     onNone
   }
+
+  def toFuture = Future.failed(new NoSuchElementException("None"))
+
+  def toFutOpt = Future.successful(None)
  
   def fold[B](initial: =>B)(each: (B, Nothing) => B) = RefItself(initial)
 

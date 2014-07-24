@@ -27,6 +27,10 @@ case class LazyId [T, K](nakedId: K, lookUpMethod:LookUpOne[T, K]) extends Ref[T
   def onComplete[U](onSuccess: T => U, onNone: => U, onFail: Throwable => U) { 
     lookUp.onComplete(onSuccess, onNone, onFail) 
   }
+
+  def toFuture = lookUp.toFuture
+
+  def toFutOpt = lookUp.toFutOpt
   
   def flatMapOne[B](f: T => Ref[B]) = lookUp.flatMap(f)
 

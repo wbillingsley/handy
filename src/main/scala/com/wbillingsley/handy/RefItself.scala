@@ -1,5 +1,7 @@
 package com.wbillingsley.handy
 
+import scala.concurrent.Future
+
 /**
  * A reference to an item that has been fetched.
  */
@@ -60,6 +62,10 @@ case class RefItself[T](val item: T) extends ResolvedRef[T] {
  
   def onComplete[U](onSuccess: T => U, onNone: => U, onFail: Throwable => U) { 
     onSuccess(item)
-  }  
+  }
+
+  override def toFuture = Future.successful(item)
+
+  override def toFutOpt = Future.successful(Some(item))
   
 }

@@ -1,5 +1,7 @@
 package com.wbillingsley.handy
 
+import java.util.NoSuchElementException
+
 import com.wbillingsley.handy._
 import scala.concurrent.Future
 import scala.concurrent.Await
@@ -46,8 +48,12 @@ class RefFuture[+T](val future: Future[T])(implicit val executionContext:Executi
       case n:NoSuchElementException => onNone
       case f => onFail(f) 
     }
-  }   
-  
+  }
+
+  override def toFuture = future
+
+  override def toFutOpt = future.map(Some(_)).recover { case n:NoSuchElementException => None }
+
   override def orIfNone[B >: T](f: => Ref[B]) = {
      val fut = future map { RefItself(_) } recover { case n:NoSuchElementException => f }
      new RefFutureRef(fut)
@@ -134,7 +140,11 @@ class RefFutureRef[+T](val futureRef: Future[Ref[T]])(implicit val executionCont
       case n:NoSuchElementException => onNone
       case f => onFail(f) 
     }
-  }   
+  }
+
+  override def toFuture = futureRef.flatMap(_.toFuture)
+
+  override def toFutOpt = futureRef.flatMap(_.toFutOpt)
   
 }
 
@@ -206,7 +216,14 @@ class RefFutureOption[+T](val future: Future[Option[T]])(implicit val executionC
   def foreach[U](f: (T) => U) {
     future.foreach(_.foreach(f))
   }
-  
+
+  override def toFutOpt = future
+
+  override def toFuture = future.flatMap(_ match {
+    case Some(x) => Future.successful(x)
+    case None => Future.failed(new NoSuchElementException("None"))
+  })
+
   def onComplete[U](onSuccess: (T) => U, onNone: => U, onFail: Throwable => U) {
     future.onSuccess { 
       case r => r match {
