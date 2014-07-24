@@ -7,6 +7,8 @@ import reactivemongo.core.commands.GetLastError
 import com.wbillingsley.handy._
 import com.wbillingsley.handyplay._
 import Ref._
+import Id._
+import Ids._
 import scala.concurrent.ExecutionContext
 
 trait DAO {
@@ -22,6 +24,8 @@ trait DAO {
     def many[K <: String](r:Ids[DataT, K]) = manyById(r.ids)
     
   }
+
+  def lookUp = LookUp
 
   /**
    * A reference to the class object for the type this retrieves.
@@ -56,45 +60,15 @@ trait DAO {
    */
   implicit def executionContext:ExecutionContext;
 
-  implicit def IdWriter[T] = new BSONWriter[Id[T, String], BSONValue] {
-    def write(r:Id[T, String]) = {
-      if (db.useBSONIds) {
-        BSONObjectID(r.id)
-      } else {
-        BSONString(r.id)
-      }
-    }
-  }
-  
-  /**
-   * Implicit conversion that allows LazyId[_ ,_] to be written as BSON
-   */
-  implicit def RefWithStringIdWriter[T <: HasStringId[T]] = new BSONWriter[RefWithId[T], BSONValue] {
-    def write(r:RefWithId[T]) = BSONArray(r.getId[String].map(IdWriter[T].write(_)))
-  }
-
-  /**
-   * Implicit conversion that allows RefMany[_] to be written as BSON
-   */
-  implicit def RefManyByStringIdWriter[T <: HasStringId[T]] = new BSONWriter[RefManyById[T, String], BSONValue] {
-    def write(r:RefManyById[T, String]) = {
-      if (db.useBSONIds) {
-        BSONArray(r.rawIds.map(BSONObjectID(_)))
-      } else {
-        BSONArray(r.rawIds.map(BSONString(_)))
-      }
-    }
-  }  
-
   /**
    * A test on whether _id matches. Depending on db.useBSONObjectIds, this
    * will either expect the id in the database to be a BSONObjectID or a BSONString 
    */
-  def idIs(id:String):(String, BSONValue) = {
+  def idIs[T](id:Id[T, String]):(String, BSONValue) = {
     if (db.useBSONIds) {
-      "_id" -> BSONObjectID(id)
+      "_id" -> BSONObjectID(id.id)
     } else {
-      "_id" -> BSONString(id) 
+      "_id" -> BSONString(id.id)
     }
   }
   
@@ -102,13 +76,13 @@ trait DAO {
    * A test on whether _id is in the set. Depending on db.useBSONObjectIds, this
    * will either expect the id in the database to be a BSONObjectID or a BSONString 
    */
-  def idsIn(ids:Seq[String]):(String, BSONValue) = {
+  def idsIn[T](ids:Ids[T, String]):(String, BSONValue) = {
     if (db.useBSONIds) {
-      val oids = for (id <- ids) yield BSONObjectID(id)
+      val oids = for (id <- ids.ids) yield BSONObjectID(id)
       
       "_id" -> BSONDocument("$in" -> oids.toSet)
     } else {
-      "_id" -> BSONDocument("$in" -> ids.toSet) 
+      "_id" -> BSONDocument("$in" -> ids.ids.toSet)
     }
   }
   
@@ -116,8 +90,7 @@ trait DAO {
    * Fetches and deserializes items by their ID
    */
   def byId(id:String) = {
-    val fo = coll.find(BSONDocument(idIs(id))).one[DataT]
-    new RefFutureOption(fo)
+    findOne(BSONDocument(idIs(id.asId[DataT])))
   } 
   
   /**
@@ -128,7 +101,7 @@ trait DAO {
      * First, fetch the items.  These might not return in the same order as the
      * sequence of IDs, and duplicate IDs will only return once
      */
-    val rMany = findMany(BSONDocument(idsIn(ids)))
+    val rMany = findMany(BSONDocument(idsIn(ids.asIds[DataT])))
     
     /*
      * As the order of the items is unspecified, build a map from id -> item
@@ -153,11 +126,6 @@ trait DAO {
    * Allocates a new ID
    */
   def allocateId = BSONObjectID.generate.stringify
-  
-  /**
-   * Creates a blank unsaved object
-   */
-  def unsaved:DataT
   
   def updateAndFetch(query:BSONDocument, update:BSONDocument, upsert:Boolean = false):Ref[DataT] = {
     val c = coll
@@ -188,12 +156,20 @@ trait DAO {
   }
 
   def findMany(query:BSONDocument):RefMany[DataT] = {
-    new RefEnumIter(coll.find(query).cursor[DataT].enumerateBulks(maxDocs=Int.MaxValue, stopOnError=true))
+    try {
+      new RefEnumIter(coll.find(query).cursor[DataT].enumerateBulks(maxDocs=Int.MaxValue, stopOnError=true))
+    } catch {
+      case (x:Throwable) => new RefFailed(x)
+    }
   }
   def findMany(query:Ref[BSONDocument]):RefMany[DataT] = query flatMap findMany
 
   def findSorted(query:BSONDocument, sort:BSONDocument):RefMany[DataT] = {
-    new RefEnumIter(coll.find(query).sort(sort).cursor[DataT].enumerateBulks(maxDocs=Int.MaxValue, stopOnError=true))
+    try {
+      new RefEnumIter(coll.find(query).sort(sort).cursor[DataT].enumerateBulks(maxDocs=Int.MaxValue, stopOnError=true))
+    } catch {
+      case (x:Throwable) => new RefFailed(x)
+    }
   }
   def findSorted(query:Ref[BSONDocument], sort:Ref[BSONDocument]):RefMany[DataT] = {
     query flatMap { q =>
@@ -205,7 +181,11 @@ trait DAO {
 
   
   def findOne(query:BSONDocument):Ref[DataT] = {
-    new RefFutureOption(coll.find(query).one[DataT])    
+    try {
+      new RefFutureOption(coll.find(query).one[DataT])
+    } catch {
+      case (x:Throwable) => new RefFailed(x)
+    }
   }
   def findOne(query:Ref[BSONDocument]):Ref[DataT] = query flatMap findOne
 
