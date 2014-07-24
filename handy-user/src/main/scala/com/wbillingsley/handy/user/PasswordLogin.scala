@@ -2,7 +2,7 @@ package com.wbillingsley.handy.user
 
 import org.mindrot.jbcrypt.BCrypt;
 
-trait PasswordLogin {
+trait PasswordLoginT {
     
   def hash(password: String) = BCrypt.hashpw(password, BCrypt.gensalt())
 
@@ -18,3 +18,13 @@ trait PasswordLogin {
   val email: Option[String]
   
 }
+
+case class PasswordLogin (
+
+ pwhash: Option[String] = None,
+
+ username: Option[String] = None,
+
+ email:Option[String] = None
+
+) extends PasswordLoginT

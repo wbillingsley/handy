@@ -1,6 +1,6 @@
 package com.wbillingsley.handy.user
 
-trait Identity {
+trait IdentityT {
   
     val service:String
     
@@ -20,3 +20,16 @@ object Identity {
 
 }
 
+case class Identity (
+
+  service: String,
+
+  value: String,
+
+  avatar: Option[String] = None,
+
+  username: Option[String] = None,
+
+  since: Long = Identity.defaultSince
+
+) extends IdentityT
