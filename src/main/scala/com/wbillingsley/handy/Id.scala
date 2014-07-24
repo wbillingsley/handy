@@ -29,4 +29,16 @@ object Id {
   implicit class AsId[K](val k:K) extends AnyVal {
     def asId[T] = Id[T,K](k)
   }
+
+  implicit class OptLookup[+T,K](val o:Option[Id[T,K]]) extends AnyVal {
+    def lookUp[TT >: T](implicit lu: LookUp[TT,K]) = o match {
+      case Some(id) => id.lookUp(lu)
+      case _ => RefNone
+    }
+
+    def lazily[TT >: T](implicit lu: LookUp[TT,K]) = o match {
+      case Some(id) => id.lazily(lu)
+      case _ => RefNone
+    }
+  }
 }

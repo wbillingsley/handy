@@ -2,9 +2,7 @@ package com.wbillingsley.handy
 
 case class Ids[T, K](ids: Seq[K]) {
 
-  import Ids._
-
-  def lookUp(implicit lu: LookUpMany[T,K]) = lu(this)
+  def lookUp(implicit lu: LookUp[T,K]) = lu.many(this)
 
 }
 
@@ -23,5 +21,12 @@ object Ids {
     def asIds[T] = Ids[T,K](k)
   }
 
+  implicit class ManyIdToIds[T, K](val m:RefMany[Id[T,K]]) extends AnyVal {
+    def toIds:Ref[Ids[T,K]] = for {
+      singleIds <- m.toRefOne
+      seq = singleIds.toSeq
+      ids = seq.map(_.id).asIds[T]
+    } yield ids
+  }
 }
 
