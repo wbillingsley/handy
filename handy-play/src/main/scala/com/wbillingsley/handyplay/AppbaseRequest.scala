@@ -1,4 +1,4 @@
-package com.wbillingsley.handy.appbase
+package com.wbillingsley.handyplay
 
 import play.api.mvc.{WrappedRequest, Request}
 import com.wbillingsley.handy.Approval

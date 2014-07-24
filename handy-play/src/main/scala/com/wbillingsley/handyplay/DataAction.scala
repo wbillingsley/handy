@@ -1,14 +1,14 @@
-package com.wbillingsley.handy.appbase
+package com.wbillingsley.handyplay
 
+import play.api.Logger
 import play.api.mvc.{EssentialAction, Request, RequestHeader, AnyContent, AcceptExtractors, BodyParser, BodyParsers, Action, Result, Results}
 
 import com.wbillingsley.handy._
 import Ref._
+import com.wbillingsley.handyplay.JsonConverter._
 import com.wbillingsley.handyplay.RefConversions._
-import JsonConverter._
-
-import play.api.libs.iteratee.{Iteratee, Enumerator, Input, Step, Done}
-import scala.concurrent.{Future, Promise}      
+import play.api.libs.iteratee._
+import scala.concurrent.{Future, Promise}
 import play.api.libs.json.{ JsValue, Json }
 import play.api.libs.concurrent.Execution.Implicits._
 
@@ -102,7 +102,7 @@ trait DataActionConfig {
  */
 case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U]) {
 
-  import DataAction._
+  import com.wbillingsley.handyplay.DataAction._
   
   /*
    * Handles error conditions from a DataAction
@@ -168,12 +168,18 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
    * Processes a RefMany[Json] with headers into an Iteratee that can be returned from an action's apply method 
    */
   private def refManyJsonToIteratee(request: AppbaseRequest[_, _], whi:WithHeaderInfo[RefMany[JsValue]]) = {
-    val res = whi.data whenReady { j =>
-      Results.Ok.chunked(
-        Enumerator("[") andThen j.enumerate.stringify andThen Enumerator("]") andThen Enumerator.eof[String]
+    val rRes = for {
+      enumJ:Enumerator[JsValue] <- whi.data.enumerateR
+      enumS = enumJ.stringify
+      recovery = Enumeratee.recover[String] { (error, input) =>
+        Logger.error("Failed during enumeration", error)
+      }
+      result = Results.Ok.chunked(
+        Enumerator("[").andThen(enumS).andThen(Enumerator("]")).andThen(Enumerator.eof[String]) through recovery
       ).as("application/json")
-    }
-    refResultToIteratee(request, WithHeaderInfo(res, whi.headerInfo))
+    } yield result
+
+    refResultToIteratee(request, WithHeaderInfo(rRes, whi.headerInfo))
   }
   
   /**

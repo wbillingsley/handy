@@ -11,10 +11,8 @@ object HandyBuild extends Build {
 
   lazy val handycasbah:Project = Project(id = "handy-casbah", base = file("handy-casbah")) dependsOn(root)
 
-  lazy val handyappbasecore:Project = Project(id = "handy-appbase-core", base = file("handy-appbase-core")) dependsOn(root, handyplay)
-
   lazy val handyuser:Project = Project(id = "handy-user", base = file("handy-user")) dependsOn(root)
 
-  lazy val aggregate:Project = Project(id = "handy-agg-all", base = file("handy-agg-all")) aggregate(root, handyplay, handyreactivemongo, handyappbasecore, handyuser)
+  lazy val aggregate:Project = Project(id = "handy-agg-all", base = file("handy-agg-all")) aggregate(root, handyplay, handyreactivemongo, handyuser)
 
 }

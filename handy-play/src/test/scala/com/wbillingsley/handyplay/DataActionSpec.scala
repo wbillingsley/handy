@@ -1,17 +1,11 @@
-package com.wbillingsley.handy.appbase;
+package com.wbillingsley.handyplay
 
-
-import org.specs2.mutable._
-import scala.concurrent.ExecutionContext.Implicits.global
-import com.wbillingsley.handy._
 import com.wbillingsley.handy.Ref._
-
+import com.wbillingsley.handy._
+import play.api.libs.iteratee._
+import play.api.libs.json._
 import play.api.mvc._
 import play.api.test._
-import play.api.libs.json._
-import play.api.libs.iteratee._
-
-
 
 
 object DataActionSpec {
@@ -73,9 +67,9 @@ object DataActionSpec {
 
 class DataActionSpec extends PlaySpecification with Results {
   
-  import scala.concurrent.Future  
+  import scala.concurrent.Future
   
-  def unChunk(r:Future[SimpleResult]) = {
+  def unChunk(r:Future[Result]) = {
     val str = contentAsString(r)
     val lines = str.split("\n")
     
@@ -84,7 +78,6 @@ class DataActionSpec extends PlaySpecification with Results {
     
     var cursor = 0
     while (cursor < lines.length) {
-      val length = lines(cursor)
       val line = lines(cursor + 1)
       buf.append(line.trim)
       cursor += 2
@@ -95,7 +88,7 @@ class DataActionSpec extends PlaySpecification with Results {
   
   sequential
   
-  import DataActionSpec._
+  import com.wbillingsley.handyplay.DataActionSpec._
   
   "DataAction" should {
     
@@ -150,7 +143,7 @@ class DataActionSpec extends PlaySpecification with Results {
     }
     
     "return a JSON error message if a many-JSON request fails to become ready" in new WithApplication(fakeApp) {
-      import FakeController._
+      import com.wbillingsley.handyplay.DataActionSpec.FakeController._
       
       def method = DataAction.returning.manyJson { 
         for {
@@ -170,7 +163,7 @@ class DataActionSpec extends PlaySpecification with Results {
 
     // TODO: By default we skip errors mid-sequence; but we should introduce the option not to
     "skip failures in the middle of a sequence" in new WithApplication(fakeApp) {
-      import FakeController._
+      import com.wbillingsley.handyplay.DataActionSpec.FakeController._
       
       def method = DataAction.returning.manyJson { 
         for {
