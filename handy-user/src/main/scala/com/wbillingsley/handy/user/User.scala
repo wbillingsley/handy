@@ -66,12 +66,4 @@ case class User(
 
   def getIdentity(service:String) = identities.find(p => p.service == service)
 
-  /**
-   * Two users are equal if they have the same ID
-   */
-  override def equals(obj: Any) = {
-    obj.isInstanceOf[User] &&
-      obj.asInstanceOf[User].id == id
-  }
-
 }
