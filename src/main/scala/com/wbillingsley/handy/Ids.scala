@@ -4,6 +4,10 @@ case class Ids[T, K](ids: Seq[K]) {
 
   def lookUp(implicit lu: LookUp[T,K]) = lu.many(this)
 
+  def contains(id:Id[T, K]) = ids.contains(id.id)
+
+  def toRefMany(implicit lu:LookUp[T, K]) = RefManyById(ids)(lu)
+
 }
 
 case class UntypedIds[K](id: K) {
