@@ -69,9 +69,15 @@ object WithHeaderInfo {
  * Configuration for a DataAction. This sets, for instance 
  */
 trait DataActionConfig {
+
+  /**
+   * Whether or not to redirect HTML
+   */
+  def redirectHtmlRequests:Boolean
   
   /**
    * The action to perform when a request accepts HTML. This should be your application's home page.
+   * TODO: Add a switch for whether or not to redirect HTML-accepting requests
    */
   def homeAction:EssentialAction
 
@@ -216,7 +222,7 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
    */
   def jsonWH(block: AppbaseRequest[AnyContent, U] => WithHeaderInfo[Ref[JsValue]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request => 
     request match {
-      case Accepts.Html() => config.homeAction(request)
+      case Accepts.Html() if config.redirectHtmlRequests => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block(wrapped)
@@ -237,7 +243,7 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
    */
   def jsonWH(block: => WithHeaderInfo[Ref[JsValue]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request => 
     request match {
-      case Accepts.Html() => config.homeAction(request)
+      case Accepts.Html() if config.redirectHtmlRequests => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block
@@ -258,7 +264,7 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
    */
   def jsonWH[A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => WithHeaderInfo[Ref[JsValue]]) = BodyAction(bodyParser) { implicit request =>
     request match {
-      case Accepts.Html() => config.homeAction(request)
+      case Accepts.Html() if config.redirectHtmlRequests => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block(wrapped)
@@ -278,7 +284,7 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
    */
   def oneWH[T](block: => WithHeaderInfo[Ref[T]])(implicit jc:JsonConverter[T, U]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
     request match {
-      case Accepts.Html() => config.homeAction(request)
+      case Accepts.Html() if config.redirectHtmlRequests  => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block
@@ -302,7 +308,7 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
    */
   def oneWH[T](block: AppbaseRequest[AnyContent, U] => WithHeaderInfo[Ref[T]])(implicit jc:JsonConverter[T, U]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
 	request match {
-      case Accepts.Html() => config.homeAction(request)
+      case Accepts.Html() if config.redirectHtmlRequests => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block(wrapped)
@@ -326,7 +332,7 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
    */
   def oneWH[T, A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => WithHeaderInfo[Ref[T]])(implicit jc:JsonConverter[T, U]) = BodyAction(bodyParser) { implicit request =>
 	request match {
-      case Accepts.Html() => config.homeAction(request)
+      case Accepts.Html() if config.redirectHtmlRequests => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block(wrapped)
@@ -349,7 +355,7 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
    */
   def manyWH[T](block: => WithHeaderInfo[RefMany[T]])(implicit jc:JsonConverter[T, U]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
 	request match {
-      case Accepts.Html() => config.homeAction(request)
+      case Accepts.Html() if config.redirectHtmlRequests => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block
@@ -370,7 +376,7 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
    */
   def manyWH[T](block: AppbaseRequest[AnyContent, U] => WithHeaderInfo[RefMany[T]])(implicit jc:JsonConverter[T, U]) =  BodyAction(BodyParsers.parse.anyContent) { implicit request =>
 	request match {
-      case Accepts.Html() => config.homeAction(request)
+      case Accepts.Html() if config.redirectHtmlRequests => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block(wrapped)
@@ -391,7 +397,7 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
    */
   def manyWH[T, A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => WithHeaderInfo[RefMany[T]])(implicit jc:JsonConverter[T, U]) = BodyAction(bodyParser) { implicit request =>
 	request match {
-      case Accepts.Html() => config.homeAction(request)
+      case Accepts.Html() if config.redirectHtmlRequests => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block(wrapped)
@@ -412,7 +418,7 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
    */
   def manyJsonWH(block: => WithHeaderInfo[RefMany[JsValue]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
     request match {
-      case Accepts.Html() => config.homeAction(request)
+      case Accepts.Html() if config.redirectHtmlRequests => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block
@@ -432,7 +438,7 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
    */
   def manyJsonWH(block: AppbaseRequest[AnyContent, U] => WithHeaderInfo[RefMany[JsValue]]) = BodyAction(BodyParsers.parse.anyContent) { implicit request =>
     request match {
-      case Accepts.Html() => config.homeAction(request)
+      case Accepts.Html() if config.redirectHtmlRequests => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block(wrapped)
@@ -451,7 +457,7 @@ case class DataAction[U](implicit config:DataActionConfig, ufr:UserFromRequest[U
    */
   def manyJsonWH[A](bodyParser: BodyParser[A])(block: AppbaseRequest[A, U] => WithHeaderInfo[RefMany[JsValue]]) = BodyAction(bodyParser) { implicit request =>
     request match {
-      case Accepts.Html() => config.homeAction(request)
+      case Accepts.Html() if config.redirectHtmlRequests => config.homeAction(request)
       case Accepts.Json() => {
         val wrapped = new AppbaseRequest(request)
         val whi = block(wrapped)

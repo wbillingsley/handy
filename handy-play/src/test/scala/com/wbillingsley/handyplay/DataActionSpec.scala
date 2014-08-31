@@ -24,6 +24,7 @@ object DataActionSpec {
     }
     
     implicit val dataActionConfig = new DataActionConfig {
+      val redirectHtmlRequests = true
       def homeAction = Action { Results.Ok("") }
       def errorCodeMap = Map.empty
     }
