@@ -4,7 +4,7 @@ trait IdentityT {
   
     val service:String
     
-    val value:String
+    val value:Option[String]
     
     val avatar:Option[String] 
     
@@ -24,7 +24,7 @@ case class Identity (
 
   service: String,
 
-  value: String,
+  value: Option[String],
 
   avatar: Option[String] = None,
 
