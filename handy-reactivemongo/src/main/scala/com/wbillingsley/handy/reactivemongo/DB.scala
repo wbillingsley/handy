@@ -24,7 +24,10 @@ class DBConnector {
   lazy val connection = {
     val auth = for (u <- dbUser; p <- dbPwd) yield Authenticate(dbName, u, p)
     
-    driver.connection(List(connectionString), auth.toSeq)    
+    driver.connection(
+      nodes=List(connectionString),
+      authentications=auth.toSeq
+    )
   }
   
   lazy val db = connection.apply(dbName)

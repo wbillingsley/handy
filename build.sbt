@@ -1,10 +1,9 @@
-name := "handy"
 
 organization in ThisBuild := "com.wbillingsley"
 
-version in ThisBuild := "0.6.0-SNAPSHOT"
+version in ThisBuild := "0.7.0-SNAPSHOT"
 
-scalaVersion in ThisBuild := "2.11.0"
+scalaVersion in ThisBuild := "2.11.6"
 
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation", "-feature")
 
@@ -27,7 +26,6 @@ publishTo in ThisBuild := {
     publishTo.value
 }
 
-parallelExecution in Test := false
 
 pomExtra in ThisBuild := (
   <scm>
@@ -44,8 +42,19 @@ pomExtra in ThisBuild := (
 )
 
 
-libraryDependencies += "junit" % "junit" % "4.7" % "test"
+libraryDependencies in ThisBuild ++= Seq(
+  "org.specs2" %% "specs2" % "2.3.12" % "test",
+  "junit" % "junit" % "4.7" % "test"
+)
 
-libraryDependencies in ThisBuild += "org.specs2" %% "specs2" % "2.3.12" % "test"
+lazy val handy = (project in file("handy"))
 
-libraryDependencies += "com.novocode" % "junit-interface" % "0.7" % "test" 
+lazy val handyplay = (project in file("handy-play")).dependsOn(handy)
+
+lazy val handyreactivemongo = (project in file("handy-reactivemongo")).dependsOn(handy, handyplay)
+
+lazy val handycasbah = (project in file("handy-casbah")).dependsOn(handy)
+
+lazy val handyuser = (project in file("handy-user")).dependsOn(handy)
+
+lazy val aggregate = (project in file(".")).aggregate(handy, handyplay, handyreactivemongo, handyuser)
