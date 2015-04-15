@@ -53,8 +53,10 @@ lazy val handyplay = (project in file("handy-play")).dependsOn(handy)
 
 lazy val handyreactivemongo = (project in file("handy-reactivemongo")).dependsOn(handy, handyplay)
 
-lazy val handycasbah = (project in file("handy-casbah")).dependsOn(handy)
+lazy val handymongodbasync = (project in file("handy-mongodb-async")).dependsOn(handy, handyplay)
 
 lazy val handyuser = (project in file("handy-user")).dependsOn(handy)
+
+lazy val handyappbase = (project in file("handy-appbase-core")).dependsOn(handyuser, handy)
 
 lazy val aggregate = (project in file(".")).aggregate(handy, handyplay, handyreactivemongo, handyuser)

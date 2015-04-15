@@ -17,6 +17,8 @@ case class UntypedIds[K](id: K) {
 object Ids {
   def apply[K](ids:Seq[K]) = UntypedIds(ids)
 
+  def empty[T, K] = Ids[T,K](Seq.empty)
+
   type LookUpMany[T,K] = Ids[T,K] => RefMany[T]
 
   case class LookUpPair[T,K](ids:Ids[T,K], lu:LookUpMany[T,K])
