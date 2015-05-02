@@ -1,6 +1,6 @@
 package com.wbillingsley.handy.appbase
 
-import com.wbillingsley.handy.{Id, HasKind, HasStringId}
+import com.wbillingsley.handy._
 
 case class Registration[T, R, P <: HasKind](
 

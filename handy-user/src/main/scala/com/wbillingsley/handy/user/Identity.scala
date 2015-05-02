@@ -1,21 +1,21 @@
 package com.wbillingsley.handy.user
 
 trait IdentityT {
-  
+
     val service:String
-    
+
     val value:Option[String]
-    
-    val avatar:Option[String] 
-    
+
+    val avatar:Option[String]
+
     val username:Option[String]
-    
+
     val since:Long
-    
+
 }
 
 object Identity {
-    
+
     def defaultSince = System.currentTimeMillis
 
 }
@@ -32,4 +32,12 @@ case class Identity (
 
   since: Long = Identity.defaultSince
 
-) extends IdentityT
+) extends IdentityT {
+
+
+  def matches(service:String, value:Option[String], username:Option[String]):Boolean = {
+    this.service == service &&
+      (value.nonEmpty && this.value == value) || (username.nonEmpty && this.username == username)
+  }
+
+}

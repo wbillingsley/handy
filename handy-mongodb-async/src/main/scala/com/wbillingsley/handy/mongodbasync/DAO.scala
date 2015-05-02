@@ -1,21 +1,17 @@
 package com.wbillingsley.handy.mongodbasync
 
-import java.util.NoSuchElementException
-
 import com.mongodb.WriteConcern
-import com.mongodb.async.SingleResultCallback
 import com.mongodb.client.model._
 import com.mongodb.client.result.UpdateResult
 import com.wbillingsley.handy._
 import com.wbillingsley.handyplay.RefEnumIter
-import org.bson.BsonDocument
+import org.bson.{BsonObjectId, BsonArray, BsonDocument}
 import org.bson.conversions.Bson
 import org.bson.types.ObjectId
-
-import BsonHelpers._
 import play.api.libs.iteratee.Enumerator
+import scala.collection.JavaConverters._
 
-import scala.concurrent.{Future, ExecutionContext, Promise}
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
  *
@@ -87,7 +83,12 @@ class DAO[DataT <: HasStringId[DataT]] (
   /**
    * A test on whether _id is in the set.
    */
-  def idsIn(ids:Ids[_, String]) = Filters.in("_id", ids.ids.map(new ObjectId(_)))
+  def idsIn(ids:Ids[_, String]) = {
+    val arr = for {
+      id <- ids.ids
+    } yield new BsonObjectId(new ObjectId(id))
+    Filters.in("_id", new BsonArray(arr.asJava))
+  }
 
   /**
    * Fetches and deserializes items by their ID
@@ -172,6 +173,6 @@ class DAO[DataT <: HasStringId[DataT]] (
       converter.write(item),
       new FindOneAndReplaceOptions().returnDocument(ReturnDocument.AFTER).upsert(upsert),
       _
-    ))
+    )) flatMap {x => Future.fromTry(converter.read(x)) }
   }
 }

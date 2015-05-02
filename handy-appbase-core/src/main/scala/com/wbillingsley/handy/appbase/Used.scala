@@ -1,3 +1,5 @@
 package com.wbillingsley.handy.appbase
 
-case class Used[T] (target:T, time:Long)
+import com.wbillingsley.handy.Id
+
+case class Used[T] (target:Id[T,String], time:Long)

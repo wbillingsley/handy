@@ -3,14 +3,11 @@ package com.wbillingsley.handy.mongodbasync
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.Filters
 import com.wbillingsley.handy._
-import org.bson.{BsonObjectId, BsonDocument}
-import org.bson.types.ObjectId
+import com.wbillingsley.handy.mongodbasync.BsonHelpers._
+import org.bson.BsonDocument
 import org.specs2.mutable.Specification
-import play.api.libs.iteratee.Iteratee
 
 import scala.util.Try
-
-import BsonHelpers._
 
 
 object DAOSpec {
@@ -55,23 +52,39 @@ class DAOSpec extends Specification {
     "Retrieve data it puts" in  {
       val t1 = Thing(Id(ThingDAO.allocateId), "first")
       (for {
-        dropped <- FuturifySRC.void(ThingDAO.coll.withWriteConcern(WriteConcern.FSYNCED).drop(_))
+        dropped <- FuturifySRC.void(ThingDAO.coll.withWriteConcern(WriteConcern.FSYNCED).drop)
         saved <- ThingDAO.saveAndFetch(t1).toFuture
       } yield saved.value) must beEqualTo("first").await
     }
 
-    "Retrieve mutliple it puts" in  {
+    "Retrieve multiple it puts" in  {
       val t1 = Thing(Id(ThingDAO.allocateId), "first")
       val t2 = Thing(Id(ThingDAO.allocateId), "first")
 
-      val feiAll = (for {
-        dropped <- FuturifySRC.void(ThingDAO.coll.withWriteConcern(WriteConcern.FSYNCED).drop(_))
+      val feiAll = for {
+        dropped <- FuturifySRC.void(ThingDAO.coll.withWriteConcern(WriteConcern.FSYNCED).drop)
         saved1 <- ThingDAO.saveSafe(t1).toFuture
         saved2 <- ThingDAO.saveSafe(t2).toFuture
         all <- ThingDAO.feiFindMany(Filters.eq("value", "first"))
-      } yield all)
+      } yield all
 
       ThingDAO.refMany(feiAll).collect.map(_.length).toFuture must beEqualTo(2).await
+    }
+
+    "Retrieve multiple it puts by id" in  {
+      val t1 = Thing(Id(ThingDAO.allocateId), "first")
+      val t2 = Thing(Id(ThingDAO.allocateId), "first")
+
+      import Ref._
+
+      val rAll = for {
+        dropped <- FuturifySRC.void(ThingDAO.coll.withWriteConcern(WriteConcern.FSYNCED).drop).toRef
+        saved1 <- ThingDAO.saveSafe(t1)
+        saved2 <- ThingDAO.saveSafe(t2)
+        all <- ThingDAO.manyById(Seq(t1.id.id, t2.id.id))
+      } yield all
+
+      rAll.collect.toFuture.map(_.length).toFuture must beEqualTo(2).await
     }
   }
 

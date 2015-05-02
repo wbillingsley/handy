@@ -16,7 +16,7 @@ case class Group (
 
    provenance:Option[String] = None,
 
-   members:Ids[User, String] = Ids.empty,
+   members:Ids[Group.Reg, String] = Ids.empty,
 
    created:Long = System.currentTimeMillis
 
@@ -25,13 +25,14 @@ case class Group (
 
 object Group {
   type Reg = Registration[Group, GroupRole, HasKind]
-  type Preenrol = Preenrolment[Group, GroupRole, Group.Reg]
+  type Preenrol = Preenrolment[GroupSet, Group, GroupRole, Group.Reg]
+  type PreenrolRow = Preenrolment.Row[Group, GroupRole, Group.Reg]
 }
 
 case class GroupRole(r:String)
 
 object GroupRole {
-  val member = CourseRole("member")
-  val roles:Set[CourseRole] = Set(member)
+  val member = GroupRole("member")
+  val roles:Set[GroupRole] = Set(member)
 }
 

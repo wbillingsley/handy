@@ -15,8 +15,6 @@ case class GroupSet (
 
   parent: Option[Id[GroupSet, String]] = None,
 
-  preenrol: Option[Group.Preenrol] = None,
-
   created: Long = System.currentTimeMillis
 
 ) extends HasStringId[GroupSet]

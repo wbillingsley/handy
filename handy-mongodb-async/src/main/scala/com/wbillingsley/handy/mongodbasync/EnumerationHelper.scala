@@ -1,6 +1,5 @@
 package com.wbillingsley.handy.mongodbasync
 
-import java.util
 import java.util.NoSuchElementException
 
 import com.mongodb.async.{AsyncBatchCursor, SingleResultCallback}
@@ -8,8 +7,6 @@ import com.mongodb.async.client.MongoIterable
 import org.bson.BsonDocument
 import play.api.libs.iteratee._
 
-import scala.collection.JavaConversions
-import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Promise, Future}
 
 
@@ -22,13 +19,13 @@ object EnumerationHelper {
   class EnumerateBatchesFromCursor(cursor:AsyncBatchCursor[BsonDocument])(implicit ec:ExecutionContext) extends Enumerator[Seq[BsonDocument]] {
 
     override def apply[A](it: Iteratee[Seq[BsonDocument], A]): Future[Iteratee[Seq[BsonDocument], A]] = {
-      it.fold(step => step match {
-        case Step.Cont(k) => {
-          val pList = Promise[util.List[BsonDocument]]
+      it.fold {
+        case Step.Cont(k) =>
+          val pList = Promise[java.util.List[BsonDocument]]()
 
           // Get the next batch
-          cursor.next(new SingleResultCallback[util.List[BsonDocument]] {
-            override def onResult(t: util.List[BsonDocument], throwable: Throwable): Unit = {
+          cursor.next(new SingleResultCallback[java.util.List[BsonDocument]] {
+            override def onResult(t: java.util.List[BsonDocument], throwable: Throwable): Unit = {
               if (throwable != null) {
                 pList.failure(throwable)
               } else {
@@ -43,16 +40,16 @@ object EnumerationHelper {
 
           val fut = for {
             list <- pList.future
-            seq = JavaConversions.asScalaBuffer(list)
+            seq = scala.collection.JavaConverters.asScalaBufferConverter(list).asScala
             el = Input.El(seq)
           } yield el
           fut.map(k.apply(_)).recoverWith {
-            case n:NoSuchElementException => Future.successful(k.apply(Input.EOF))
-            case t:Throwable => Future.failed(t)
+            case n: NoSuchElementException => Future.successful(k.apply(Input.EOF))
+            case t: Throwable => Future.failed(t)
           }
-        }
+
         case _ => Future.successful(it)
-      })
+      }
     }
 
   }
@@ -64,7 +61,7 @@ object EnumerationHelper {
    */
   def enumerateDocumentBatches(mi:MongoIterable[BsonDocument])(implicit ec:ExecutionContext):Future[Enumerator[Seq[BsonDocument]]] = {
     for {
-      cursor <- FuturifySRC[AsyncBatchCursor[BsonDocument]](mi.batchCursor(_))
+      cursor <- FuturifySRC[AsyncBatchCursor[BsonDocument]](mi.batchCursor)
     } yield new EnumerateBatchesFromCursor(cursor)
   }
 
@@ -107,13 +104,14 @@ object EnumerationHelper {
    * @return
    */
   def futureDoc(mi:MongoIterable[BsonDocument]):Future[BsonDocument] = {
-    FuturifySRC[BsonDocument](mi.first(_))
+    FuturifySRC[BsonDocument](mi.first)
   }
 
   def futureSeqDocs(mi:MongoIterable[BsonDocument])(implicit ec:ExecutionContext):Future[Seq[BsonDocument]] = {
+    val arr = new java.util.ArrayList[BsonDocument](0)
     for {
-      arr <- FuturifySRC[util.ArrayList[BsonDocument]](mi.into(new util.ArrayList[BsonDocument], _))
-    } yield JavaConversions.asScalaBuffer(arr)
+      arr <- FuturifySRC[java.util.ArrayList[BsonDocument]](mi.into(arr, _))
+    } yield scala.collection.JavaConverters.asScalaBufferConverter(arr).asScala
   }
 
   def futureSeq[T](mi:MongoIterable[BsonDocument])(implicit converter:BsonDocumentConverter[T], ec:ExecutionContext) = {

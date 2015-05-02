@@ -53,6 +53,19 @@ class LookUpCache {
     }
   }
 
+  def replace[T,K](id:Id[T,K])(implicit lu:LookUp[T,K]):Ref[T] = storeAndLookUp(LookUpPair(id, lu))
+
+  def replace[T,K](item:T)(implicit g: GetsId[T, K], lu:LookUp[T, K]):Ref[T] = {
+    g.getId(item) match {
+      case Some(id) => store(LookUpPair(id, lu), RefItself(item))
+      case _ => RefFailed(new IllegalStateException("Could not extract ID from item"))
+    }
+  }
+
+  def remove[T,K](id:Id[T,K])(implicit lu:LookUp[T,K]): Unit = {
+    cache.remove(LookUpPair(id, lu))
+  }
+
   /**
    * Looks up the Id in the cache, or looks it up and stores it in the case of a cache miss.
    */

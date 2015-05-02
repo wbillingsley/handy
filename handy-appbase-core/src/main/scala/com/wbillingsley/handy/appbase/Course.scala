@@ -24,7 +24,8 @@ case class Course (
 
 object Course {
   type Reg = Registration[Course, CourseRole, HasKind]
-  type Preenrol = Preenrolment[Course, CourseRole, Course.Reg]
+  type Preenrol = Preenrolment[Course, Course, CourseRole, Course.Reg]
+  type PreenrolRow = Preenrolment.Row[Course, CourseRole, Course.Reg]
 }
 
 case class CourseRole(r:String)

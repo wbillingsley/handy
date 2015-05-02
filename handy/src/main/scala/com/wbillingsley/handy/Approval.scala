@@ -7,9 +7,9 @@ import Ref._
 
 /**
  * A mutable set of permissions.  It's mutable so that in the case where
- * we ask for, but do not require, a permission we can cache the 
+ * we ask for, but do not require, a permission we can cache the
  * permission even if the programmer didn't assign the return types
- * 
+ *
  * Approvals also have a LookUpCache, which can set and used to avoid
  * calling the database mutliple times for the same item.
  */
@@ -56,7 +56,7 @@ case class Approval[U](
 
 }
 
-case class Refused(msg: String) extends Throwable(msg) {  
+case class Refused(msg: String) extends Throwable(msg) {
   def toRef = RefFailed(this)
 }
 
@@ -64,10 +64,10 @@ object Refused {
   implicit def toRef(r:Refused) = RefFailed(r)
 }
 
-/** 
- * Permissions should return RefItself(Approved) if they decide that yes the user may do that.  
+/**
+ * Permissions should return RefItself(Approved) if they decide that yes the user may do that.
  * There is an implicit conversion from Approved to RefItself(Approved), so they can also just return
- * Approved. 
+ * Approved.
  */
 case class Approved(msg: String = "Approved") {
   def toRef = RefItself(this)
@@ -150,25 +150,27 @@ object Perm {
 
     def apply(r:Ref[T]):Ref[Perm[U]] = for { k <- r.refId } yield new POI(k, r)
 
-    def apply(id:Id[T,K])(implicit lu:LookUp[T, K]) = new POI(id, id.lookUp(lu))
+    def apply(id:Id[T,K])(implicit lu:LookUp[T, K]):Ref[Perm[U]] = new POI(id, id.lookUp(lu))
+
+    def apply(oid:Option[Id[T,K]])(implicit lu:LookUp[T, K]):Ref[Perm[U]] = apply(oid.lookUp)
   }
 
 }
 
 
 object Approval {
-  
+
   import scala.language.implicitConversions
-  
+
   implicit class WrappedRefApproval[U](val ra: Ref[Approval[U]]) extends AnyVal {
-    
+
     def askOne (permission: Perm[U]):Ref[Approved] = {
       for {
         a <- ra
         approved <- a.askOne(permission)
       } yield approved
     }
-    
+
     def ask(rps: Ref[Perm[U]]*):Ref[Approved] = {
       for {
         a <- ra
@@ -179,7 +181,7 @@ object Approval {
     }
 
     /**
-     * Returns a Ref[Boolean] 
+     * Returns a Ref[Boolean]
      */
     def askBoolean(permission: Perm[U]):Ref[Boolean] = {
       for {
@@ -193,9 +195,9 @@ object Approval {
      */
     def askBoolean(refPerm: Ref[Perm[U]]):Ref[Boolean] = refPerm flatMap askBoolean // calls askBoolean(Perm[U])
   }
-  
+
   implicit def refApproval[U](a: Approval[U]):RefItself[Approval[U]] = RefItself(a)
-  
+
   implicit def wrapApproval[U](a: Approval[U]):WrappedRefApproval[U] = WrappedRefApproval(RefItself(a))
-  
+
 }
