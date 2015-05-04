@@ -44,46 +44,61 @@ pomExtra in ThisBuild := (
 
 
 
-lazy val handy = (project in file("handy"))
+lazy val handy = (crossProject.crossType(CrossType.Pure) in file("handy"))
   .settings(commonSettings:_*)
+  .settings(name := "handy")
+
+lazy val handyJvm = handy.jvm
+lazy val handyJs = handy.js
 
 lazy val handyplay = (project in file("handy-play"))
-  .dependsOn(handy)
+  .dependsOn(handyJvm)
   .settings(commonSettings:_*)
   .settings(
     name := "handy-play"
   )
 
 lazy val handyreactivemongo = (project in file("handy-reactivemongo"))
-  .dependsOn(handy, handyplay)
+  .dependsOn(handyJvm, handyplay)
   .settings(commonSettings:_*)
   .settings(
     name := "handy-reactivemongo"
   )
 
 lazy val handymongodbasync = (project in file("handy-mongodb-async"))
-  .dependsOn(handy, handyplay)
+  .dependsOn(handyJvm, handyplay)
   .settings(commonSettings:_*)
   .settings(
     name := "handy-mongodb-async"
   )
 
-lazy val handyuser = (project in file("handy-user"))
-  .dependsOn(handy)
-  .settings(commonSettings:_*)
-  .settings(
-    name := "handy-user"
-  )
 
-lazy val handyappbase = (project in file("handy-appbase-core"))
-  .dependsOn(handyuser, handy)
+
+lazy val handyappbase = (crossProject.crossType(CrossType.Pure) in file("handy-appbase-core"))
+  .dependsOn(handy)
   .settings(commonSettings:_*)
   .settings(
     name := "handy-appbase"
   )
 
+lazy val handyappbaseJvm = handyappbase.jvm
+lazy val handyappbaseJs = handyappbase.js
+
+lazy val handyuser = (project in file("handy-user"))
+  .dependsOn(handyJvm, handyappbaseJvm)
+  .settings(commonSettings:_*)
+  .settings(
+    name := "handy-user"
+  )
+
+
 lazy val aggregate = (project in file("."))
-  .aggregate(handy, handyplay, handyreactivemongo, handyuser, handyappbase, handymongodbasync)
+  .aggregate(
+    handyJvm, handyJs,
+    handyplay, handyreactivemongo,
+    handyappbaseJvm, handyappbaseJs,
+    handyuser,
+    handymongodbasync)
   .settings(commonSettings:_*)
   .settings(
     name := "handy-aggregate"

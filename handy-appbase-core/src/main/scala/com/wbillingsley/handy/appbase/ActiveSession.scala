@@ -1,4 +1,4 @@
-package com.wbillingsley.handy.user
+package com.wbillingsley.handy.appbase
 
 /**
  * The user's active sessions are kept, for resolving identity and in order to support
