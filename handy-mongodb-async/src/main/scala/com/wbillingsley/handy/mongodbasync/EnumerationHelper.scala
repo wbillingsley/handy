@@ -12,6 +12,21 @@ import scala.concurrent.{ExecutionContext, Promise, Future}
 
 object EnumerationHelper {
 
+  def enumerateBatchesFromCursor(cursor:AsyncBatchCursor[BsonDocument])(implicit ec:ExecutionContext) = Enumerator.fromCallback1[Seq[BsonDocument]](
+    retriever = { (first) =>
+      def seqs = for {
+        list <- FuturifySRC[java.util.List[BsonDocument]](cursor.next)
+        seq = scala.collection.JavaConverters.asScalaBufferConverter(list).asScala
+      } yield seq
+
+      seqs.map(Some(_)).recover { case n: NoSuchElementException => None }
+    },
+    onComplete = { () => cursor.close() },
+    onError = { (err:String,el:Input[Seq[BsonDocument]]) => cursor.close() }
+  )
+
+  /*
+
   /**
    * Takes an asynchronous cursor, and drives an iteratee with the batches
    * @param cursor
@@ -19,41 +34,61 @@ object EnumerationHelper {
   class EnumerateBatchesFromCursor(cursor:AsyncBatchCursor[BsonDocument])(implicit ec:ExecutionContext) extends Enumerator[Seq[BsonDocument]] {
 
     override def apply[A](it: Iteratee[Seq[BsonDocument], A]): Future[Iteratee[Seq[BsonDocument], A]] = {
-      it.fold {
-        case Step.Cont(k) =>
-          val pList = Promise[java.util.List[BsonDocument]]()
+      new RuntimeException("foo").printStackTrace()
 
-          // Get the next batch
-          cursor.next(new SingleResultCallback[java.util.List[BsonDocument]] {
-            override def onResult(t: java.util.List[BsonDocument], throwable: Throwable): Unit = {
-              if (throwable != null) {
-                pList.failure(throwable)
-              } else {
-                if (t == null) {
-                  pList.failure(new NoSuchElementException())
-                } else {
-                  pList.success(t)
-                }
-              }
-            }
-          })
+      def fit = (for {
+        list <- FuturifySRC[java.util.List[BsonDocument]](cursor.next)
+        seq = scala.collection.JavaConverters.asScalaBufferConverter(list).asScala
+        el = Input.El(seq)
+      } yield it.feed(el)) recoverWith { case n: NoSuchElementException => it.feed(Input.EOF) }
+
+      cursor.setBatchSize(7)
+
+      def fEls = for {
+        list <- FuturifySRC[java.util.List[BsonDocument]](cursor.next)
+        seq = scala.collection.JavaConverters.asScalaBufferConverter(list).asScala
+        el = Input.El(seq)
+      } yield el
+
+      fEls.flatMap(it.feed(_)) recoverWith { case n: NoSuchElementException => cursor.close(); it.feed(Input.EOF) }
+      /*
+
+
+      it.feed()
+
+      it.fold { (ff) => println("ff was " + ff); ff match {
+        case Step.Cont(k) =>
+          println("X CALLED")
 
           val fut = for {
-            list <- pList.future
+            list <- FuturifySRC[java.util.List[BsonDocument]](cursor.next)
             seq = scala.collection.JavaConverters.asScalaBufferConverter(list).asScala
             el = Input.El(seq)
-          } yield el
-          fut.map(k.apply(_)).recoverWith {
-            case n: NoSuchElementException => Future.successful(k.apply(Input.EOF))
-            case t: Throwable => Future.failed(t)
+          } yield {
+              println("SEQ LENGHT" + seq.length)
+              k.apply(el)
+            }
+
+          fut.recoverWith {
+            case n: NoSuchElementException => {
+              println("X CLOSED")
+              Future.successful(k.feed(Input.EOF))
+            }
+            case t: Throwable => {
+              println("FAILED WITH " + t)
+              Future.failed(t)
+            }
           }
 
-        case _ => Future.successful(it)
-      }
+        case s => {
+          println(s)
+          Future.successful(it)
+        }
+      }*/
     }
 
   }
-
+*/
   /**
    * Given a MongoIterable, return something that can drive an Iteratee with batches of results
    * @param mi
@@ -62,7 +97,7 @@ object EnumerationHelper {
   def enumerateDocumentBatches(mi:MongoIterable[BsonDocument])(implicit ec:ExecutionContext):Future[Enumerator[Seq[BsonDocument]]] = {
     for {
       cursor <- FuturifySRC[AsyncBatchCursor[BsonDocument]](mi.batchCursor)
-    } yield new EnumerateBatchesFromCursor(cursor)
+    } yield enumerateBatchesFromCursor(cursor)
   }
 
   /**

@@ -3,9 +3,11 @@ package com.wbillingsley.handy.mongodbasync
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.Filters
 import com.wbillingsley.handy._
+import Ref._
 import com.wbillingsley.handy.mongodbasync.BsonHelpers._
 import org.bson.BsonDocument
 import org.specs2.mutable.Specification
+import play.api.libs.iteratee.Iteratee
 
 import scala.util.Try
 
@@ -49,6 +51,24 @@ class DAOSpec extends Specification {
 
   "DataAction" should {
 
+    "Retrieve more than 101 items by manual fiddling" in {
+      def savem = for {
+        dropped <- FuturifySRC.void(ThingDAO.coll.withWriteConcern(WriteConcern.FSYNCED).drop).toRef
+        i <- new RefTraversableOnce((1 to 200).toSeq)
+        t1 = Thing(Id(ThingDAO.allocateId), "Number " + i)
+        saved <- ThingDAO.saveSafe(t1)
+      } yield saved
+
+      val vv = for {
+        s <- savem.collect.toFuture
+        cursor <- FuturifySRC.apply(ThingDAO.coll.find(bsonDoc()).batchCursor)
+        e = EnumerationHelper.enumerateBatchesFromCursor(cursor)
+        v <- e.run(Iteratee.fold(0) { case (x, y) => x + y.size })
+      } yield v
+
+      vv must beEqualTo(200).await
+    }
+
     "Retrieve data it puts" in  {
       val t1 = Thing(Id(ThingDAO.allocateId), "first")
       (for {
@@ -85,6 +105,28 @@ class DAOSpec extends Specification {
       } yield all
 
       rAll.collect.toFuture.map(_.length).toFuture must beEqualTo(2).await
+    }
+
+    "Retrieve more than 101 items using findMany" in {
+      def savem = for {
+        dropped <- FuturifySRC.void(ThingDAO.coll.withWriteConcern(WriteConcern.FSYNCED).drop).toRef
+        i <- new RefTraversableOnce((1 to 200).toSeq)
+        t1 = Thing(Id(ThingDAO.allocateId), "Number " + i)
+        saved <- ThingDAO.saveSafe(t1)
+      } yield saved
+
+      def findem = ThingDAO.findMany(bsonDoc())
+
+      (for {
+        dropped <- FuturifySRC.void(ThingDAO.coll.withWriteConcern(WriteConcern.FSYNCED).drop).toRef
+        saved <- savem.collect
+        found <- findem.collect
+      } yield {
+          println(s"Saved ${saved.size}")
+          println(s"Found ${found.size}")
+          saved.size == found.size
+        }).toFuture must beEqualTo(true).await
+
     }
   }
 
