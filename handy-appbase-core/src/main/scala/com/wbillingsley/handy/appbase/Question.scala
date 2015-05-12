@@ -8,7 +8,7 @@ abstract class Answer[T](val kind:String) extends HasKind {
 
   val question: Id[Question,String]
 
-  val answer: Option[T]
+  var answer: Option[T]
 
 }
 
@@ -31,7 +31,7 @@ case class ShortTextQuestion(
 case class ShortTextAnswer(
   question: Id[Question, String],
 
-  answer: Option[String]
+  var answer: Option[String]
 ) extends Answer[String](ShortTextQuestion.kind)
 
 
@@ -51,6 +51,6 @@ case class BooleanQuestion(
 case class BooleanAnswer(
   question: Id[Question, String],
 
-  answer: Option[Boolean]
+  var answer: Option[Boolean]
 ) extends Answer[Boolean](BooleanQuestion.kind)
 
