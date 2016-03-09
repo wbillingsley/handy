@@ -5,4 +5,4 @@
 
 //addSbtPlugin("me.lessis" % "bintray-sbt" % "0.1.1")
 
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.2")
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.7")

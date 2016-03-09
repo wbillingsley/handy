@@ -6,6 +6,8 @@ case class Ids[T, K](ids: Seq[K]) {
 
   def contains(id:Id[T, K]) = ids.contains(id.id)
 
+  def toSeqId:Seq[Id[T, K]] = ids.map(new Id(_))
+
   def toRefMany(implicit lu:LookUp[T, K]) = RefManyById(ids)(lu)
 
 }

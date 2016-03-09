@@ -2,10 +2,10 @@
 
 lazy val commonSettings = Seq(
   organization := "com.wbillingsley",
-  version := "0.7.0-SNAPSHOT",
-  scalaVersion := "2.11.6",
+  version := "0.8.0-SNAPSHOT",
+  scalaVersion := "2.11.7",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature"),
-  crossScalaVersions := Seq("2.11.6"),
+  crossScalaVersions := Seq("2.11.7"),
   licenses := Seq("MIT" -> url("http://www.opensource.org/licenses/mit-license.php")),
   homepage := Some(url("http://github.com/wbillingsley/handy")),
   publishMavenStyle := true,
@@ -21,7 +21,8 @@ lazy val commonSettings = Seq(
 publishTo in ThisBuild := {
   val nexus = "https://oss.sonatype.org/"
   if (version.value.trim.endsWith("SNAPSHOT"))
-    Some("snapshots" at nexus + "content/repositories/snapshots")
+    Some("Hopper snapshots" at "http://hopper.une.edu.au:8081/artifactory/libs-snapshot-local;build.timestamp=" + new java.util.Date().getTime)
+    //Some("snapshots" at nexus + "content/repositories/snapshots")
   else
     publishTo.value
 }
