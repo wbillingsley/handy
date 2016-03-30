@@ -16,6 +16,10 @@ case class Course (
 
     coverImage:Option[String] = None,
 
+    secret: String = scala.util.Random.alphanumeric.take(16).mkString,
+
+    ltis: Seq[LTIConsumer] = Seq.empty,
+
     addedBy:Id[Course.Reg, String],
 
     created:Long = System.currentTimeMillis
@@ -39,3 +43,5 @@ object CourseRole {
   val roles:Set[CourseRole] = Set(staff, student)
 
 }
+
+case class LTIConsumer(clientKey:String, secret:String, comment:Option[String] = None)
