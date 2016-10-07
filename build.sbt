@@ -47,7 +47,11 @@ pomExtra in ThisBuild := (
 
 lazy val handy = (crossProject.crossType(CrossType.Pure) in file("handy"))
   .settings(commonSettings:_*)
-  .settings(name := "handy")
+  .settings(
+    name := "handy",
+
+    libraryDependencies += "org.reactivestreams" % "reactive-streams" % "1.0.0"
+  )
 
 lazy val handyJvm = handy.jvm
 lazy val handyJs = handy.js
