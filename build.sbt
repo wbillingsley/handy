@@ -100,7 +100,7 @@ lazy val handyuser = (project in file("handy-user"))
 lazy val aggregate = (project in file("."))
   .aggregate(
     handyJvm, handyJs,
-    handyplay, handyreactivemongo,
+    handyreactivemongo,
     handyappbaseJvm, handyappbaseJs,
     handyuser,
     handymongodbasync)
