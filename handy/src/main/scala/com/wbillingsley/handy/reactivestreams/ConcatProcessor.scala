@@ -15,7 +15,6 @@ class ConcatProcessor[T](pubs:Publisher[Publisher[T]])(implicit ec:ExecutionCont
 
   var inbound:Option[Subscription] = None
   var outbound:Option[DCSubscription[T]] = None
-  var next:Int = 0
 
   override def subscribe(s: Subscriber[_ >: T]): Unit = {
     var firstSub = true
@@ -31,6 +30,7 @@ class ConcatProcessor[T](pubs:Publisher[Publisher[T]])(implicit ec:ExecutionCont
 
     if (firstSub) {
       pubs.subscribe(this)
+      for { subscr <- outbound } s.onSubscribe(subscr)
     }
   }
 
@@ -62,14 +62,18 @@ class ConcatProcessor[T](pubs:Publisher[Publisher[T]])(implicit ec:ExecutionCont
         s.request(1)
       }
 
-      override def onComplete(): Unit = inbound match {
-        case Some(i) => i.request(1)
-        case None => for { s <- outbound } s.pushComplete()
+      override def onComplete(): Unit = {
+        inbound match {
+          case Some(i) => i.request(1)
+          case None => for { s <- outbound } s.pushComplete()
+        }
       }
 
-      override def onNext(t: T): Unit = for { sq <- outbound } {
-        sq.push(t)
-        for { s <- os } s.request(1)
+      override def onNext(t: T): Unit = {
+        for { sq <- outbound } {
+          sq.push(t)
+          for { s <- os } s.request(1)
+        }
       }
     })
   }

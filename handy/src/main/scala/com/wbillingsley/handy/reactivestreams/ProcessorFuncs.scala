@@ -38,7 +38,6 @@ object ProcessorFuncs {
     } yield item
   }
 
-
   def collect[T](publisher:Publisher[T])(implicit ec:ExecutionContext):Ref[Seq[T]] = {
 
     val b = scala.collection.mutable.Buffer.empty[T]
@@ -50,13 +49,18 @@ object ProcessorFuncs {
       override def onError(t: Throwable): Unit = p.failure(t)
 
       override def onSubscribe(s: Subscription): Unit = {
+        println("received subscription")
         os = Some(s)
         s.request(1)
       }
 
-      override def onComplete(): Unit = if (!p.isCompleted) p.success(b.toSeq)
+      override def onComplete(): Unit = {
+        println("received complete")
+        if (!p.isCompleted) p.success(b.toSeq)
+      }
 
       override def onNext(t: T): Unit = {
+        println(s"received $t")
         b.append(t)
         for { s <- os } s.request(1)
       }
@@ -65,5 +69,14 @@ object ProcessorFuncs {
 
     new RefFuture(p.future)
   }
+
+  implicit class ProcessorOps[T](val p:Publisher[T]) extends AnyVal {
+
+    def mapR[B](f: T => Ref[B])(implicit ec:ExecutionContext):Processor[T, B] = new MapR[T, B](p)(f)
+
+    def map[B](f: T => B)(implicit ec:ExecutionContext):Processor[T, B] = new MapR[T, B](p)(f.andThen(RefItself.apply))
+
+  }
+
 
 }

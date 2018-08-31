@@ -31,6 +31,8 @@ case class Approval[U](
     approved
   }
 
+  def askAfresh(permission:Perm[U]) = permission.resolve(this)
+
   def askOne(permission:Perm[U]) = {
     get(permission).toRef orIfNone {
       for (appr <- permission.resolve(this)) yield add(permission, appr)

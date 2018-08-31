@@ -25,26 +25,28 @@ import scala.util.{Failure, Success, Try}
   * method so that whenever anything
   *
   */
-class Latch[T](op: => Future[T], parent:Option[Latch[_]] = None)(implicit ec:ExecutionContext) {
+class Latch[T](op: => Future[T], parents:Seq[Latch[_]] = Seq.empty)(implicit ec:ExecutionContext) {
 
-  private val listeners:mutable.Set[Latch.Listener[T]] = mutable.Set.empty
+  private val listeners: mutable.Set[Latch.Listener[T]] = mutable.Set.empty
 
   /**
     * A listener that detects whether the "parent" Latch has cleared (or changed), and clears this one.
     * This should be registered while this Latch has a Future value, but not when it is clear.
     */
-  private val parentListener:Latch.Listener[Any] = { case _ => clear() }
+  private val parentListener: Latch.Listener[Any] = {
+    case _ => clear()
+  }
 
   /**
     * The cached (clearable) future value
     */
-  var cached:Option[Future[T]] = None
+  var cached: Option[Future[T]] = None
 
-  def addListener(l:Latch.Listener[T]) = synchronized {
+  def addListener(l: Latch.Listener[T]) = synchronized {
     listeners.add(l)
   }
 
-  def removeListener(l:Latch.Listener[T]) = synchronized {
+  def removeListener(l: Latch.Listener[T]) = synchronized {
     listeners.remove(l)
   }
 
@@ -53,8 +55,10 @@ class Latch[T](op: => Future[T], parent:Option[Latch[_]] = None)(implicit ec:Exe
     */
   def clear() = synchronized {
     cached = None
-    parent.foreach(_.removeListener(parentListener))
-    listeners.foreach { _(None) }
+    parents.foreach(_.removeListener(parentListener))
+    listeners.foreach {
+      _ (None)
+    }
     Latch.globalNotify(None)
   }
 
@@ -62,9 +66,11 @@ class Latch[T](op: => Future[T], parent:Option[Latch[_]] = None)(implicit ec:Exe
     * Can be called to manually fill the Latch with a value.
     * In this case it will not register a listener with any parent (but beware that one might already be in place)
     */
-  def fill(v:T) = synchronized {
+  def fill(v: T) = synchronized {
     cached = Some(Future.successful(v))
-    listeners.foreach { _(Some(Success(v))) }
+    listeners.foreach {
+      _ (Some(Success(v)))
+    }
     Latch.globalNotify(Some(Success(v)))
   }
 
@@ -72,11 +78,13 @@ class Latch[T](op: => Future[T], parent:Option[Latch[_]] = None)(implicit ec:Exe
     * Can be called to manually fill the Latch with a value.
     * In this case it will not register a listener with any parent (but beware that one might already be in place)
     */
-  def fillFuture(f:Future[T]):Future[T] = synchronized {
+  def fillFuture(f: Future[T]): Future[T] = synchronized {
     cached = Some(f)
-    parent.foreach(_.addListener(parentListener))
+    parents.foreach(_.addListener(parentListener))
     f.onComplete({ t =>
-      listeners.foreach { _(Some(t)) }
+      listeners.foreach {
+        _ (Some(t))
+      }
       Latch.globalNotify(Some(t))
     })
     f
@@ -86,9 +94,11 @@ class Latch[T](op: => Future[T], parent:Option[Latch[_]] = None)(implicit ec:Exe
     * Can be called to manually fill the Latch with a failed value.
     * In this case it will not register a listener with any parent (but beware that one might already be in place)
     */
-  def fail(t:Throwable) = synchronized {
+  def fail(t: Throwable) = synchronized {
     cached = Some(Future.failed(t))
-    listeners.foreach { _(Some(Failure(t))) }
+    listeners.foreach {
+      _ (Some(Failure(t)))
+    }
     Latch.globalNotify(Some(Failure(t)))
   }
 
@@ -104,7 +114,7 @@ class Latch[T](op: => Future[T], parent:Option[Latch[_]] = None)(implicit ec:Exe
     * Called to get a Future value from the latch, which might already have been completed.
     * This is usually what triggers the computation.
     */
-  def request:Future[T] = {
+  def request: Future[T] = {
     cached match {
       case Some(x) => x
       case _ => fillFuture(op)
@@ -114,8 +124,8 @@ class Latch[T](op: => Future[T], parent:Option[Latch[_]] = None)(implicit ec:Exe
   /**
     * Produces a dependent Latch, that uses "lazy observation" to keep itself up-to-date with this latch.
     */
-  def map[B](t:T => B):Latch[B] = {
-    new Latch(request.map(t), Some(this))
+  def map[B](t: T => B): Latch[B] = {
+    new Latch(request.map(t), Seq(this))
   }
 
   /**
@@ -126,10 +136,19 @@ class Latch[T](op: => Future[T], parent:Option[Latch[_]] = None)(implicit ec:Exe
     * A flatMap taking T => Latch[B] would be of limited use, as it would not have the "lazy observer"
     * listener set up.
     */
-  def flatMap[B](t:T => Future[B]):Latch[B] = {
-    new Latch(op.flatMap(t), Some(this))
+  def flatMap[B](t: T => Future[B]): Latch[B] = {
+    new Latch(request.flatMap(t), Seq(this))
   }
 
+  def combine[B, C](b: Latch[B])(op: (T, B) => C) = {
+    val l = new Latch({
+      for {
+        itemA <- request
+        itemB <- b.request
+      } yield op(itemA, itemB)
+    }, Seq(this, b))(this.ec)
+    l
+  }
 }
 
 object Latch {

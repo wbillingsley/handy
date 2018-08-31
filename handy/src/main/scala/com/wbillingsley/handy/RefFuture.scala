@@ -176,6 +176,8 @@ class RefFutureRefMany[+T](val futureRef: Future[RefMany[T]])(implicit val execu
 
   def withFilter(p: T => Boolean) = new RefFutureRefMany(futureRef.map(_.withFilter(p)))
 
+  def takeWhile(p: T => Boolean) = new RefFutureRefMany(futureRef.map(_.takeWhile(p)))
+
   def fold[B](initial: =>B)(each:(B, T) => B) = new RefFutureRef(futureRef.map(_.fold(initial)(each)))
 
   def whenReady[B](block: RefMany[T] => B) = new RefFutureRef(futureRef.map(_.whenReady(block)))

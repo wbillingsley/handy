@@ -1,5 +1,8 @@
 package com.wbillingsley.handy
 
+import com.wbillingsley.handy.reactivestreams.TakeWhileR
+
+import scala.annotation.tailrec
 import scala.language.{higherKinds, postfixOps}
 
 /**
@@ -63,7 +66,18 @@ case class RefTraversableRef[T, C[T] <: TraversableOnce[T]](val refs: Traversabl
   def fetch = RefTraversableOnce(refs.flatMap(_.fetch))
   
   def first = Ref.fromOptionItem(headOption)
-  
+
+  def headR = {
+    def firstNonEmpty(s:Stream[Ref[T]]):Ref[T] = {
+      s.headOption match {
+        case Some(r) => r.orIfNone[T](firstNonEmpty(s.tail))
+        case _ => RefNone
+      }
+    }
+
+    firstNonEmpty(refs.toStream)
+  }
+
   def headOption = refs.flatMap(_.fetch).toStream.headOption
   
   def toOption = headOption
@@ -103,7 +117,7 @@ case class RefTraversableRef[T, C[T] <: TraversableOnce[T]](val refs: Traversabl
   def whenReady[B](block: RefMany[T] => B):Ref[B] = RefItself(block(this))
   
   def recoverManyWith[B >: T](pf: PartialFunction[Throwable, RefMany[B]]) = this
-  
+
 }
 
 case class RefTraversableRefMany[T, C[T] <: TraversableOnce[T]](val refs: TraversableOnce[RefMany[T]]) extends RefMany[T] {
@@ -140,7 +154,7 @@ case class RefTraversableRefMany[T, C[T] <: TraversableOnce[T]](val refs: Traver
       ar.flatMap(a => refMany.fold(a)(each))
     }     
   }
-  
+
   def whenReady[B](block: RefMany[T] => B):Ref[B] = RefItself(block(this))
   
   def recoverManyWith[B >: T](pf: PartialFunction[Throwable, RefMany[B]]) = this

@@ -4,7 +4,7 @@ import org.specs2.mutable._
 import scala.concurrent.ExecutionContext.Implicits.global
 import Ref._
 
-import scala.concurrent.Promise
+import scala.concurrent.{Future, Promise}
 
 object LatchSpec extends Specification {
 
@@ -58,6 +58,38 @@ object LatchSpec extends Specification {
       l.fill(4)
 
       dependentLatch.request should be_==(8).await
+    }
+
+    "support for comprehensions that produce a latch" in {
+
+      val latch = Latch.immediate(1)
+
+      // A dummy asynchronous function
+      def asyncFunc(i:Int) = Future.successful(i * 2)
+
+      val dependent:Latch[Int] = for {
+        a <- latch
+        b <- asyncFunc(a)
+        c <- asyncFunc(b)
+      } yield c
+
+      latch.fill(2)
+
+      dependent.request should be_==(8).await
+    }
+
+    "support combinations of latches" in {
+
+      val latchA = Latch.immediate(1)
+      val latchB = Latch.immediate(10)
+
+      // A dummy asynchronous function
+      def asyncFunc(a:Int, b:Int) = Future.successful(a * b)
+
+      val dependent:Latch[Int] = latchA.combine(latchB)(_ * _)
+      latchB.fill(8)
+
+      dependent.request should be_==(8).await
     }
 
 
