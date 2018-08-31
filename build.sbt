@@ -2,15 +2,15 @@
 
 lazy val commonSettings = Seq(
   organization := "com.wbillingsley",
-  version := "0.8.0-SNAPSHOT",
-  scalaVersion := "2.11.7",
+  version := "0.9.0-SNAPSHOT",
+  scalaVersion := "2.12.6",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature"),
-  crossScalaVersions := Seq("2.11.7"),
+  crossScalaVersions := Seq("2.11.7", "2.12.6"),
   licenses := Seq("MIT" -> url("http://www.opensource.org/licenses/mit-license.php")),
   homepage := Some(url("http://github.com/wbillingsley/handy")),
   publishMavenStyle := true,
   libraryDependencies ++= Seq(
-    "org.specs2" %% "specs2" % "2.3.12" % "test",
+    "org.specs2" %% "specs2-core" % "4.3.4" % "test",
     "junit" % "junit" % "4.7" % "test"
   )
 )
@@ -18,15 +18,7 @@ lazy val commonSettings = Seq(
 // Bintray settings for publishing releases
 //seq(bintrayPublishSettings:_*)
 
-publishTo in ThisBuild := {
-  val nexus = "https://oss.sonatype.org/"
-  if (version.value.trim.endsWith("SNAPSHOT"))
-    Some("Hopper snapshots" at "http://hopper.une.edu.au:8081/artifactory/libs-snapshot-local;build.timestamp=" + new java.util.Date().getTime)
-    //Some("snapshots" at nexus + "content/repositories/snapshots")
-  else
-    publishTo.value
-}
-
+publishTo in ThisBuild := Some("Hopper snapshots" at "http://hopper.une.edu.au/artifactory/libs-snapshot-local;build.timestamp=" + new java.util.Date().getTime)
 
 pomExtra in ThisBuild := (
   <scm>
