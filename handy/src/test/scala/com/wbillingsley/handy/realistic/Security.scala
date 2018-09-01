@@ -11,25 +11,29 @@ import Security._
  */
 
 object Security {
-  def hasRole(user: Ref[User], role: Role) = {
-    (for (u <- user if u.roles contains role)
-      yield Approved("Is editor")) orIfNone Refused("You do not have the role " + role)
+  def hasRole(user: RefOpt[User], role: Role):RefOpt[Approved] = {
+    (for {
+      u <- user if u.roles contains role
+    } yield Approved("Is editor")) orElse RefOptFailed(Refused("You do not have the role " + role))
   }
 
   val canRead = Perm.of[User,Page].onId {
     case (prior, page) =>
-      (for (p <- page if p.isPublic) yield
-        Approved("Public pages can be read by anyone")
-        ) orIfNone hasRole(prior.who, Viewer)
+      for {
+        p <- page
+        a <- if (p.isPublic) {
+          Approved("Public pages can be read by anyone").itself
+        } else hasRole(prior.who, Viewer).require
+      } yield a
   }
 
   val canEdit = Perm.of[User,Page].onId {
     case (prior, page) =>
-      hasRole(prior.who, Editor)
+      hasRole(prior.who, Editor).require
   }
 
   val canCreate = Perm.unique[User] {
     case (prior) =>
-      hasRole(prior.who, Editor)
+      hasRole(prior.who, Editor).require
   }
 }

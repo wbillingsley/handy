@@ -20,7 +20,7 @@ package com.wbillingsley.handy
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.higherKinds
-import java.util.NoSuchElementException
+import scala.util.{Failure, Success, Try}
 
 /**
  * RefCanFlatMapTo. The flatMap method is designed to take an implicit
@@ -28,134 +28,102 @@ import java.util.NoSuchElementException
  * thus for loops) depending on the parameter type. See the implicit
  * objets in the Ref ccompanion object.
  */
-trait RCFMT[-From[_], -To[_], +Result[_]] {  
+trait RCFMT[-From[AA], -To[BB], +Result[BB]] {
   def flatMap[A, B](from: From[A], f: A => To[B]):Result[B]  
 }
 
-trait RMCFMT[-From[_], -To[_], +Result[_]] {  
+
+trait RMCFMT[-From[AA], -To[BB], +Result[BB]] {
   def flatMap[A, B](from: From[A], f: A => To[B]):Result[B]  
 }
 
-trait RSuper[+T] {
-  type Repr[T] <: RSuper[T]
-}
+trait RSuper[+T]
 
 /**
  * Companion object
  */
-object Ref { 
+object Ref {
 
   import scala.language.implicitConversions
 
   /**
    * Allows us to say "foo itself" and get a RefItself(foo)
    */
-  implicit class Itself[T](val it:T) extends AnyVal { 
-    def itself = RefItself(it) 
-  }
-  
-  def fromOptionId[T, K](opt: Option[K])(implicit lookUp:LookUp[T, K]) = {
-    opt match {
-      case Some(id) => new LazyId(id, lookUp.one[K])
-      case None => RefNone
-    }
+  implicit class Itself[T](val it:T) extends AnyVal {
+    def itself = RefItself(it)
   }
 
-  implicit def fromOptionItem[T](opt: Option[T]):ResolvedRef[T] = {
-    opt match {
-      case Some(item) => RefItself(item)
-      case None => RefNone
-    }
+  implicit def fromOption[T](opt: Option[T]):RefOpt[T] = RefOpt.apply(opt)
+
+  implicit def fromFuture[T](fut: Future[T])(implicit ec:ExecutionContext):RefFuture[T] = {
+    new RefFuture(fut)(ec)
   }
 
-  implicit def fromFuture[T](fut: Future[T])(implicit ec:ExecutionContext) = new RefFuture(fut)(ec)
-  
-  /** 
+  /**
    * FlatMap from one to one returns a singular Ref.
    */
-  implicit object OneToOne extends RCFMT[Ref, Ref, Ref] {    
-    def flatMap[A, B](from: Ref[A], f: A => Ref[B]) = {
+  implicit object OneToOne extends RCFMT[Ref, Ref, Ref] {
+    def flatMap[A, B](from: Ref[A], f: A => Ref[B]):Ref[B] = {
       from.flatMapOne(f)
-    }    
+    }
   }
 
-  /** 
+  /**
    * FlatMap from one to option returns a singular Ref.
    */
-  implicit object OneToOption extends RCFMT[Ref, Option, Ref] {    
-    def flatMap[A, B](from: Ref[A], f: A => Option[B]) = {
-      from.flatMapOne(item => Ref(f(item)))      
-    }    
-  }  
-  
-  /** 
+  implicit object OneToOpt extends RCFMT[Ref, RefOpt, RefOpt] {
+    def flatMap[A, B](from: Ref[A], f: A => RefOpt[B]):RefOpt[B] = {
+      from.flatMapOpt(f)
+    }
+  }
+
+  /**
    * FlatMap from one to many returns a RefMany.
    */
-  implicit object OneToMany extends RCFMT[Ref, RefMany, RefMany] {    
-    def flatMap[A, B](from: Ref[A], f: A => RefMany[B]) = {
+  implicit object OneToMany extends RCFMT[Ref, RefMany, RefMany] {
+    def flatMap[A, B](from: Ref[A], f: A => RefMany[B]):RefMany[B] = {
       from.flatMapMany(f)
-    }    
+    }
   }
-    
+
   /**
    * Adds a toRef method to convert this collection into a RefMany.  Note that we do not just
-   * implicitly convert from TraversableOnce to Ref because it would cause there to be a 
+   * implicitly convert from TraversableOnce to Ref because it would cause there to be a
    * compiler error with an ambiguous conversion for some collections with flatMap
    * (as both a conversion to Ref and a conversion to MonadOps could provide flatMap)
    */
-  implicit class travToRef[T, C[T] <: TraversableOnce[T]](val underlying: C[T]) extends AnyVal {
-	def toRefMany = new RefTraversableOnce(underlying)  
-  }  
-  
+  implicit class travToRef[T, C[TT] <: TraversableOnce[TT]](val underlying: C[T]) extends AnyVal {
+	  def toRefMany = RefTraversableOnce(underlying)
+  }
+
   implicit class futToRef[T](val underlying: Future[T]) extends AnyVal {
     def toRef(implicit ec:ExecutionContext) = new RefFuture(underlying)(ec)
-  }  
-  
+  }
+
   implicit class optToRef[T](val underlying: Option[T]) extends AnyVal {
-	def toRef = fromOptionItem(underlying) 
-  } 
+	  def toRef:RefOpt[T] = RefOpt.apply(underlying)
+  }
 
   implicit class tryToRef[T](val underlying: scala.util.Try[T]) extends AnyVal {
     import scala.util.{Success, Failure}
-    
-    def toRef = underlying match {
-      case Success(item) => item.itself
+
+    def toRef:Ref[T] = underlying match {
+      case Success(item) => RefItself(item)
       case Failure(f) => RefFailed(f)
     }
-  } 
-  
-  
-  /**
-   * flattens a RefMany[A[B]] by flatMaping itself to its contents
-   */
-  implicit class flattenableMany[B, A[B]](val underlying: RefMany[A[B]]) extends AnyVal {
-    def flatten[Result[B]](implicit imp: RMCFMT[RefMany, A, Result]) = imp.flatMap(underlying, {a:A[B] => a})  
   }
 
-  /**
-   * flattens a Ref[A[B]] by flatMaping itself to its contents
-   */
-  implicit class flattenable[B, A[B]](val underlying: Ref[A[B]]) extends AnyVal {
-    def flatten[Result[B]](implicit imp: RCFMT[Ref, A, Result]) = imp.flatMap(underlying, {a:A[B] => a})  
-  }
-  
-  implicit def throwableToRef(exc: Throwable) = RefFailed(exc) 
-  
+  implicit def throwableToRef(exc: Throwable):RefFailed = RefFailed(exc)
+
   def itself[T](item: T) = RefItself(item)
-    
-  
-  def apply[T, K](clazz : scala.Predef.Class[T], opt: Option[K])(implicit lookUp:LookUp[T, K]) = fromOptionId(opt)(lookUp)
 
-  def apply[T](opt: Option[T]) = fromOptionItem(opt)
-  
-  /**
-   * Converts a Ref[T] to a Ref[Option[T]]; by default RefFailed becomes None.itself, however 
-   * that can be changed by passing a different recoverWith function.
-   */
-  def optionally[T](r:Ref[T], recoverWith: PartialFunction[Throwable, Ref[T]] = PartialFunction.apply { x:Throwable => RefNone }):Ref[Option[T]] = {
-    r recoverWith(recoverWith) map(Some(_)) orIfNone None.itself
+  def pure[T](item: T) = RefItself(item)
+
+  def apply[T](tr:Try[T]):RefSync[T] = tr match {
+    case Success(t) => RefItself(t)
+    case Failure(f) => RefFailed(f)
   }
-  
+
 }
 
 
@@ -167,78 +135,60 @@ object Ref {
  */
 trait Ref[+T] extends RSuper[T] { 
   
-  def fetch: ResolvedRef[T]
-
   /**
    * Returns an ID for the object only if one is immediately available (ie, not for incomplete futures)
    */
   def immediateId[K](implicit g:GetsId[T, K]):Option[Id[T,K]] = None
 
   /**
-   * Note that the way this is defined, you can flatMap from a RefOne to a RefMany.
+   * Allows use in for comprehensions. Automatically routes to flatMapOne (bind), flatMapOpt, or flatMapMany
    */
-  def flatMap[B, R[B], Result[_]](func: T => R[B])(implicit imp: RCFMT[Ref, R, Result]):Result[B] = imp.flatMap(this, func)
-  
-  def flatMapOne[B](func: T => Ref[B]):Ref[B] 
+  def flatMap[B, R[_], Result[_]](func: T => R[B])(implicit imp: RCFMT[Ref, R, Result]):Result[B] = {
+    imp.flatMap(this, func)
+  }
+
+  /** bind, as in monads */
+  def bind[B](func: T => Ref[B]):Ref[B] = flatMapOne(func)
+
+  def flatMapOne[B](func: T => Ref[B]):Ref[B]
+
+  def flatMapOpt[B](func: T => RefOpt[B]):RefOpt[B]
 
   def flatMapMany[B](func: T => RefMany[B]):RefMany[B] 
 
-  def withFilter(func: T => Boolean):Ref[T]
-  
-  def orIfNone[B >: T](f: => Ref[B]):Ref[B]
-  
   def recoverWith[B >: T](pf: PartialFunction[Throwable, Ref[B]]):Ref[B]
   
   def map[B](func: T => B):Ref[B]
 
   def foreach[U](func: T => U):Unit 
   
-  def refId[K](implicit g:GetsId[T, K]):Ref[Id[T,K]] = Ref(immediateId(g)) orIfNone {
-    for {
-      i <- this
-      id <- Ref(g.getId(i))
-    } yield id
+  def refId[K](implicit g:GetsId[T, K]):RefOpt[Id[T,K]] = {
+    RefOpt.apply(immediateId(g)) orElse {
+      this.flatMapOpt(i => RefOpt.apply(g.getId(i)))
+    }
   }
 
   def toFuture:Future[T]
 
-  /**
-   * Converts this Ref to a Future[Option[T]] that might or might not immediately complete.
-   */
-  def toFutOpt:Future[Option[T]]
-
-  def onComplete[U](onSuccess: T => U, onNone: => U, onFail: Throwable => U):Unit
+  def optional:RefOpt[T] = this.flatMapOpt(RefSome.apply) recoverWith {
+    case _:NoSuchElementException => RefNone
+  }
 
 }
 
 /**
- * A {@code Ref} that has an ID that can immediately be got.
+ * A `Ref` that has an ID that can immediately be got.
  */
 trait IdImmediate[+T] {
   def getId[K](implicit g:GetsId[T, K]):Option[Id[T,K]]
 }
 
 /**
- * A resolved reference to an (or no) item
+ * Equivalent to Try[T]
  */
-trait ResolvedRef[+T] extends Ref[T] with TraversableOnce[T] with IdImmediate[T] {
-  def fetch = this
+trait RefSync[+T] extends Ref[T] {
+  def toEither:Either[Throwable, T]
 
-  def toOption:Option[T]
-
-  def toEither:Either[Throwable, Option[T]]
+  def toTry:Try[T]
 }
-
-/**
- * A resolved reference to a number of items
- */
-trait ResolvedRefMany[+T] extends RefMany[T] with TraversableOnce[T] {
-  def fetch = this  
-}
-
-
-/**
- * A reference that has not yet been looked up
- */
-trait UnresolvedRef[+T] extends Ref[T] 
 

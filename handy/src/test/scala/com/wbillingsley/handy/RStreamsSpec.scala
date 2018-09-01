@@ -3,15 +3,15 @@ package com.wbillingsley.handy
 import com.wbillingsley.handy.reactivestreams._
 import org.reactivestreams.Publisher
 import org.specs2.mutable.Specification
-
 import Ref._
 import RefMany._
 import ProcessorFuncs._
+import org.specs2.concurrent.ExecutionEnv
 
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
 
-object RStreamsSpec extends Specification {
+class RStreamsSpec(implicit ee: ExecutionEnv) extends Specification {
 
   "DemandCounter" should {
 
@@ -52,7 +52,7 @@ object RStreamsSpec extends Specification {
       val rm = seq.toRefMany
 
       val pub = new RMPublisher(rm)
-      val mapr = new MapR(pub)({ x:Int => (x + 1).itself })
+      val mapr = new MapR(pub)({ x:Int => RefSome(x + 1) })
       val h = ProcessorFuncs.collect(mapr)
       h.toFuture must be_==(Seq(2, 3, 4, 5)).await
 
@@ -139,7 +139,7 @@ object RStreamsSpec extends Specification {
 
       // A stream of 100 asynchronus numbers, each mapped to add another asynchronus number
       def stream(x:Int) = new RMPublisher(ass.getX(x))
-      def streamSync(x:Int) = new RMPublisher(new RefTraversableOnce(0 until x))
+      def streamSync(x:Int) = new RMPublisher(RefTraversableOnce(0 until x))
 
       val mapped:Publisher[Publisher[Int]] = streamSync(3).map({ _ => println("generating a stream"); stream(10)})
       val cc = new ConcatProcessor[Int](mapped)
@@ -172,7 +172,7 @@ object RStreamsSpec extends Specification {
 
       // A stream of 100 asynchronus numbers, each mapped to add another asynchronus number
       // def stream(x:Int) = new RMPublisher(getX(x))
-       def stream(x:Int) = new MapR[Int, Int](new RMPublisher(ass.getX(x)))({ case i => (1 + i).itself })
+       def stream(x:Int) = new MapR[Int, Int](new RMPublisher(ass.getX(x)))({ case i => RefSome(1 + i) })
 
       // Now, if in our test we sum two streams, we should get 0..99 + 100..199 + 200..299 + 300..399 but the order
       // is unknown
@@ -190,7 +190,7 @@ object RStreamsSpec extends Specification {
 
       ass.completeThePromises()
 
-      result.fold(0)(_ + _).toFuture must be_==((0 until 400).sum).await
+      result.foldLeft(0)(_ + _).toFuture must be_==((0 until 400).sum).await
     }
 
   }
@@ -200,7 +200,8 @@ object RStreamsSpec extends Specification {
 /**
   * A cheaty little utility class.
   *
-  * It produces asynchronous RefMany by producing promises and storing them. You then call your asynchronous function
+  * It produces asynchronous RefMany by producing promises and storing them.
+  * You then call your asynchronous function
   * (producing an incomplete Future). And then call `completeThePromises` to make it all happen.
   */
 class AsyncStreamer {

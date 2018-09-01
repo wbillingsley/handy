@@ -1,9 +1,9 @@
 package com.wbillingsley.handy.reactivestreams
 
-import com.wbillingsley.handy.{RefFailed, RefNone, Ref}
-import org.reactivestreams.{Subscriber, Subscription, Processor, Publisher}
+import com.wbillingsley.handy.{Ref, RefFailed, RefNone, RefOptFailed}
+import org.reactivestreams.{Processor, Publisher, Subscriber, Subscription}
 
-import scala.concurrent.{Future, ExecutionContext}
+import scala.concurrent.{ExecutionContext, Future}
 
 class TakeWhileR[T](pub:Publisher[T])(f: T => Ref[Boolean])(implicit val ec: ExecutionContext) extends Processor[T, T] {
 
@@ -43,11 +43,11 @@ class TakeWhileR[T](pub:Publisher[T])(f: T => Ref[Boolean])(implicit val ec: Exe
   override def onNext(t: T): Unit = {
     for {
       s <- inbound
-      processed <- f(t).withFilter(identity) orIfNone {
+      processed <- f(t).optional.withFilter(identity) orElse {
         // If processed is false, time to stop
         s.cancel(); RefNone
       } recoverWith {
-        case x => onError(x); RefFailed(x)
+        case x => onError(x); RefOptFailed(x)
       }
       pushed <- Future.sequence(outbound.map(_.push(t)))
     } {

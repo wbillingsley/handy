@@ -13,11 +13,6 @@ import scala.util.{Failure, Success}
   *
   */
 class RefPublisher[+T](publisher:Publisher[T])(implicit val ec: ExecutionContext) extends RefMany[T] {
-  override def fetch: ResolvedRefMany[T] = ProcessorFuncs.collect(publisher).fetch match {
-    case RefItself(seq) => new RefTraversableOnce(seq)
-    case RefNone => RefNone
-    case RefFailed(x) => RefFailed(x)
-  }
 
   /**
     * Recovers from failures producing the list -- for instance if this is a RefFailed, or a RefFutureRefMany that fails.
@@ -27,7 +22,7 @@ class RefPublisher[+T](publisher:Publisher[T])(implicit val ec: ExecutionContext
 
   override def withFilter(func: (T) => Boolean): RefMany[T] = {
     new RefPublisher(new MapR[T,T](publisher)({ item:T =>
-      if (func(item)) RefItself(item) else RefNone
+      if (func(item)) RefSome(item) else RefNone
     })(ec))
   }
 
@@ -35,11 +30,17 @@ class RefPublisher[+T](publisher:Publisher[T])(implicit val ec: ExecutionContext
     * A fold across this (possibly asynchronous) collection
     * initial will only be evaluated in the success case.
     */
-  override def fold[B](initial: => B)(each: (B, T) => B): Ref[B] = new RefFuture[B](new FoldProcessor(publisher)(initial)(each).toFuture)
+  override def foldLeft[B](initial: => B)(each: (B, T) => B): Ref[B] = new RefFuture[B](new FoldProcessor(publisher)(initial)(each).toFuture)
 
   override def map[B](func: (T) => B): RefMany[B] = flatMapOne { x => RefItself(func(x)) }
 
-  override def flatMapOne[B](func: (T) => Ref[B]): RefMany[B] = new RefPublisher(new MapR(publisher)(func))
+  override def flatMapOne[B](func: (T) => Ref[B]): RefMany[B] = {
+    new RefPublisher(new MapR(publisher)(func.andThen(_.optional)))
+  }
+
+  override def flatMapOpt[B](func: T => RefOpt[B]): RefMany[B] = {
+    new RefPublisher(new MapR(publisher)(func))
+  }
 
   override def flatMapMany[B](func: (T) => RefMany[B]): RefMany[B] = {
     val manyPubs = map(func.andThen(new RMPublisher(_)))
@@ -55,7 +56,7 @@ class RefPublisher[+T](publisher:Publisher[T])(implicit val ec: ExecutionContext
     */
   override def whenReady[B](f: (RefMany[T]) => B): Ref[B] = RefItself(f(this))
 
-  override def first: Ref[T] = ProcessorFuncs.headR(publisher)
+  override def first: RefOpt[T] = ProcessorFuncs.headOption(publisher)
 
 }
 
@@ -67,7 +68,7 @@ class RefPublisher[+T](publisher:Publisher[T])(implicit val ec: ExecutionContext
 class RMPublisher[T](rm:RefMany[T])(implicit val ec: ExecutionContext) extends Publisher[T] {
 
   def start(s:DCSubscription[T]):Future[Boolean] = {
-    rm.fold(Future.successful(false))({ case (f, i) =>
+    rm.foldLeft(Future.successful(false))({ case (f, i) =>
       for {
         prevFinished <- f
         thisOne <- s.push(i)

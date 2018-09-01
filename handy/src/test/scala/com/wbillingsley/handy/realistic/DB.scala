@@ -20,7 +20,7 @@ object DB {
    * We are resolving users synchronously, but pages as futures. That's just to show that the handy framework can cope!
    */
   implicit object User extends LookUp[User, Int] {
-    def one[K <: Int](r:Id[User, K]) = Ref(userTable.get(r.id))
+    def one[K <: Int](r:Id[User, K]) = RefOpt(userTable.get(r.id)).require
 
     def many[K <: Int](r:Ids[User, K]) = {
       (for {
@@ -67,7 +67,7 @@ object DB {
     def createdBy = _createdBy
 
     def createdBy_=(u: Ref[User]) {
-      val rId = u.refId
+      val rId = u.refId.require
       _createdBy = rId flatMap { id => id.lazily }
     }
 
@@ -75,7 +75,7 @@ object DB {
 
   def createPage(createdBy: Ref[User], content: String, isPublic: Boolean = false) = {
     val key = pageTable.keySet.max + 1
-    val lazyCB = createdBy.refId flatMap { id => id.lazily }
+    val lazyCB = createdBy.refId.require flatMap { id => id.lazily }
 
     val p = DBPage(key, lazyCB, content, isPublic)
     pageTable.put(key, p)

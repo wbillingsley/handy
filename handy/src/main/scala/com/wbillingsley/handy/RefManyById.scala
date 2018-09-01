@@ -5,7 +5,7 @@ import Ref._
 /**
  * Refers to many items by their ID.
  */
-case class RefManyById[T, K](val rawIds: Seq[K], lu:LookUp[T, K]) extends RefMany[T] {
+case class RefManyById[T, K](rawIds: Seq[K], lu:LookUp[T, K]) extends RefMany[T] {
 
   import Ids._
 
@@ -13,15 +13,15 @@ case class RefManyById[T, K](val rawIds: Seq[K], lu:LookUp[T, K]) extends RefMan
 
   def lookUp = lu.many(getIds)
   
-  def first = Ref.fromOptionId(rawIds.headOption)(lu)
+  def first:RefOpt[T] = RefOpt(rawIds.headOption).flatMapOne(id => lu.one(Id(id)))
   
-  def fetch = lookUp.fetch
-    
   def isEmpty = rawIds.isEmpty
   
   def map[B](f: T => B) = lookUp.map(f)
   
   def flatMapMany[B](f: T => RefMany[B]) = lookUp.flatMapMany(f)
+
+  override def flatMapOpt[B](func: T => RefOpt[B]): RefMany[B] = lookUp.flatMapOpt(func)
 
   def flatMapOne[B](f: T => Ref[B]) = lookUp.flatMapOne(f)
   
@@ -29,7 +29,7 @@ case class RefManyById[T, K](val rawIds: Seq[K], lu:LookUp[T, K]) extends RefMan
   
   def withFilter(p: T => Boolean) = lookUp withFilter p
   
-  def fold[B](initial: =>B)(each:(B, T) => B) = lookUp.fold(initial)(each)
+  def foldLeft[B](initial: =>B)(each:(B, T) => B) = lookUp.foldLeft(initial)(each)
  
   def whenReady[B](block: RefMany[T] => B):Ref[B] = lookUp.whenReady(block)
   

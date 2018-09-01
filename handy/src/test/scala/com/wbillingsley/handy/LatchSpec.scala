@@ -1,12 +1,13 @@
 package com.wbillingsley.handy;
 
 import org.specs2.mutable._
-import scala.concurrent.ExecutionContext.Implicits.global
+
 import Ref._
+import org.specs2.concurrent.ExecutionEnv
 
 import scala.concurrent.{Future, Promise}
 
-object LatchSpec extends Specification {
+class LatchSpec(implicit ee: ExecutionEnv) extends Specification {
 
   "A latch" should {
 

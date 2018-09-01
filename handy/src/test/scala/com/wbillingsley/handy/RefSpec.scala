@@ -1,10 +1,12 @@
 package com.wbillingsley.handy;
 
 import org.specs2.mutable._
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import Ref._
+import org.specs2.concurrent.ExecutionEnv
 
-object RefSpec extends Specification {
+class RefSpec(implicit ee: ExecutionEnv) extends Specification {
   
   case class TItem(id: Long, name: String)
   
@@ -15,34 +17,64 @@ object RefSpec extends Specification {
     val objMap = scala.collection.mutable.Map.empty[Long, TItem]
 
     implicit val lum = new LookUp[TItem, Long] {
-      def one[K <: Long](r:Id[TItem, K]) = {
+      def one[K <: Long](r:Id[TItem, K]):Ref[TItem] = {
         objMap.get(r.id) match {
           case Some(x) => RefItself(x)
-          case _ => RefNone 
+          case _ => RefFailed(new NoSuchElementException("Nothing to look up"))
         }
       }
 
-      def many[K <: Long](r:Ids[TItem, K]) = {
+      def many[K <: Long](r:Ids[TItem, K]):RefMany[TItem] = {
         import Id._
-        r.ids.map(_.asId[TItem]).toRefMany flatMap one
+        for {
+          id <- r.ids.toRefMany
+          item <- one(id.asId[TItem])
+        } yield item
       }
     }
 
   }
   
   "Ref" should {
-    
+
+    "support flatMap redirection OneToOne" in {
+      def x(i:Int):Ref[Int] = RefItself(i)
+
+      x(1) flatMap x must be_==(x(1))
+    }
+
+    "support flatMap redirection OneToOpt" in {
+      def x(i:Int):Ref[Int] = RefItself(i)
+      def xo(i:Int):RefOpt[Int] = RefSome(i)
+
+      x(1) flatMap xo must be_==(xo(1))
+    }
+
+    "support flatMap redirection OneToNone" in {
+      def x(i:Int):Ref[Int] = RefItself(i)
+      def xo(i:Int) = RefNone
+
+      x(1) flatMap xo must be_==(xo(1))
+    }
+
+    "support flatMap redirection OneToMany" in {
+      def x(i:Int):Ref[Int] = RefItself(i)
+      def xm(i:Int):RefMany[Int] = RefTraversableOnce(Seq.fill(i)(i))
+
+      x(1) flatMap xm must be_==(xm(1))
+    }
+
     "support 'for' syntactic sugar across Option" in {
       val rfoo = "foo".itself
       val optSome = Some(1)
       
       val rRes = for {
         foo <- rfoo
-        num <- optSome toRef;
+        num <- optSome.toRef
         foo2 <- rfoo
       } yield foo.length + num + foo2.length
       
-      rRes must be_==(7.itself)
+      rRes.require.toFuture must be_==(7).await
     }
     
     "support 'for' syntactic sugar across Try" in {
@@ -54,11 +86,11 @@ object RefSpec extends Specification {
       
       val rRes = for {
         foo <- rfoo
-        num <- optTry toRef;
+        num <- optTry.toRef
         foo2 <- rfoo
       } yield foo.length + num + foo2.length
       
-      rRes must be_==(7.itself)
+      rRes.toFuture must be_==(7).await
     }
     
     
@@ -74,7 +106,7 @@ object RefSpec extends Specification {
       
       val foo1itself = foo1.itself
       
-      foo1itself.getId must be_==(Some("1".asId[MyFoo]))
+      foo1itself.refId.require.toFuture must be_==("1".asId[MyFoo]).await
     }
     
     "support successful synchronous lookups" in {
@@ -87,7 +119,7 @@ object RefSpec extends Specification {
       // import the implicit lookUp method
       import db.lum
       val a = LazyId(1L).apply[TItem]
-      a.fetch must be equalTo RefItself(TItem(1, "one"))
+      a.lookUp.toFuture must be_==(TItem(1, "one")).await
     }
 
     "support unsuccessful synchronous lookups" in {
@@ -100,7 +132,7 @@ object RefSpec extends Specification {
       // import the implicit lookUp method
       import db.lum
     
-      LazyId.of[TItem](2L).fetch must be equalTo RefNone
+      LazyId.of[TItem](2L).toFuture must throwAn[NoSuchElementException].await
     }
 
     "implicitly find a lookup that takes a supertype of the key" in {
@@ -108,11 +140,11 @@ object RefSpec extends Specification {
       trait MyId {
         def canonical:String
       }
-      case class IntId(val k:Int) extends MyId {
-        def canonical = k.toString
+      case class IntId(k:Int) extends MyId {
+        def canonical:String = k.toString
       }
-      case class StringId(val s:String) extends MyId {
-        def canonical = s
+      case class StringId(s:String) extends MyId {
+        def canonical:String = s
       }
 
       // a map with some dummy data
@@ -120,32 +152,37 @@ object RefSpec extends Specification {
 
       // a LookUp that accepts the superclass
       implicit val lum = new LookUp[TItem, MyId] {
-        def one[K <: MyId](r:Id[TItem, K]) = {
+        def one[K <: MyId](r:Id[TItem, K]):Ref[TItem] = {
           objMap.get(r.id.canonical) match {
             case Some(x) => RefItself(x)
-            case _ => RefNone
+            case _ => RefFailed(new NoSuchElementException)
           }
         }
 
-        def many[K <: MyId](r:Ids[TItem, K]) = {
-          import Id._
-          r.ids.map(_.asId[TItem]).toRefMany flatMap one
+        def many[K <: MyId](r:Ids[TItem, K]):RefMany[TItem] = {
+          for { id <- r.toSeqId.toRefMany; item <- one(id) } yield item
         }
       }
 
       /*
        * create refs using both notations. If these compile, the implicit has been found
        */
+      import Id._
       val oneStr = LazyId.of[TItem](StringId("1"))
-      val oneInt = LazyId(IntId(1))[TItem]
+      val oneInt = IntId(1).asId[TItem]
 
       // Just check they resolve the same
-      oneStr.fetch must be equalTo oneInt.fetch
+      val check = for {
+        s <- oneStr.lookUp
+        i <- oneInt.lookUp
+      } yield s == i
+
+      check.toFuture must be_==(true).await
     }
 
     "Support empty look ups" in {
       var foo:LazyId[TItem, _] = LazyId.empty
-      foo.fetch must be_==(RefNone)
+      foo.optional.toFutureOpt must be_==(None).await
     }
 
     "Support lookups of RefManys" in {
@@ -163,7 +200,9 @@ object RefSpec extends Specification {
       val str = Seq(1L, 2L, 3L, 4L)
 
       val rm = RefManyById(str).of[TItem]
-      rm.fetch.toList must be equalTo List(TItem(1, "one"), TItem(2, "two"), TItem(3, "three"), TItem(4, "four"))
+      rm.collect.toFuture must be_==(
+        List(TItem(1, "one"), TItem(2, "two"), TItem(3, "three"), TItem(4, "four"))
+      ).await
     }
 
   }

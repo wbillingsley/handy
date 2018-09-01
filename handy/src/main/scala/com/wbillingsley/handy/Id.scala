@@ -31,14 +31,14 @@ object Id {
   }
 
   implicit class OptLookup[+T,K](val o:Option[Id[T,K]]) extends AnyVal {
-    def lookUp[TT >: T](implicit lu: LookUp[TT,K]) = o match {
+    def lookUp[TT >: T](implicit lu: LookUp[TT,K]):Ref[TT] = o match {
       case Some(id) => id.lookUp(lu)
-      case _ => RefNone
+      case _ => RefFailed(new NoSuchElementException("No id to look up"))
     }
 
-    def lazily[TT >: T](implicit lu: LookUp[TT,K]) = o match {
+    def lazily[TT >: T](implicit lu: LookUp[TT,K]):Ref[TT] = o match {
       case Some(id) => id.lazily(lu)
-      case _ => RefNone
+      case _ => RefFailed(new NoSuchElementException("No id to look up"))
     }
   }
 }

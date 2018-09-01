@@ -1,6 +1,5 @@
 package com.wbillingsley.handy
 
-import java.util.concurrent.ConcurrentSkipListSet
 import scala.language.{implicitConversions, postfixOps}
 import Ref._
 
@@ -14,10 +13,8 @@ import Ref._
  * calling the database mutliple times for the same item.
  */
 case class Approval[U](
-    val who: Ref[U]
+    who: RefOpt[U]
 ) {
-  import scala.collection.JavaConversions._
-  import scala.collection.mutable
   import java.util._
 
   private val permissions = new concurrent.ConcurrentHashMap[Perm[U], Approved]()
@@ -26,15 +23,15 @@ case class Approval[U](
 
   def get(permission:Perm[U]) = Option(permissions.get(permission))
 
-  def add(permission:Perm[U], approved:Approved) = {
+  def add(permission:Perm[U], approved:Approved):Approved = {
     permissions.put(permission, approved)
     approved
   }
 
-  def askAfresh(permission:Perm[U]) = permission.resolve(this)
+  def askAfresh(permission:Perm[U]):Ref[Approved] = permission.resolve(this)
 
-  def askOne(permission:Perm[U]) = {
-    get(permission).toRef orIfNone {
+  def askOne(permission:Perm[U]):Ref[Approved] = {
+    get(permission).map(Ref.itself).getOrElse {
       for (appr <- permission.resolve(this)) yield add(permission, appr)
     }
   }
@@ -51,9 +48,7 @@ case class Approval[U](
    * Returns a Ref[Boolean]
    */
   def askBoolean(permission: Perm[U]):Ref[Boolean] = {
-    askOne(permission) map(_ => true) recoverWith(PartialFunction.apply(
-      (x:Throwable) => false.itself)
-    ) orIfNone false.itself
+    askOne(permission) map(_ => true) recoverWith { case _ => false.itself }
   }
 
 }
@@ -63,7 +58,7 @@ case class Refused(msg: String) extends Throwable(msg) {
 }
 
 object Refused {
-  implicit def toRef(r:Refused) = RefFailed(r)
+  implicit def toRef(r:Refused):RefFailed = RefFailed(r)
 }
 
 /**
@@ -76,7 +71,7 @@ case class Approved(msg: String = "Approved") {
 }
 
 object Approved {
-  implicit def toRef(a:Approved) = RefItself(a)
+  implicit def toRef(a:Approved):Ref[Approved] = RefItself(a)
 }
 
 /**
@@ -89,19 +84,19 @@ trait Perm[U] {
 
 object Perm {
 
-  implicit def toRefPerm[U](p:Perm[U]) = p.itself
+  implicit def toRefPerm[U](p:Perm[U]):Ref[Perm[U]] = p.itself
 
   /**
    * Creates a unique permission object
    */
-  def unique[U](block: (Approval[U]) => Ref[Approved]) = new Perm[U] {
+  def unique[U](block: (Approval[U]) => Ref[Approved]):Perm[U] = new Perm[U] {
     def resolve(prior: Approval[U]) = block(prior)
   }
 
   /**
    * Allows permissions that will cache approvals according to an item's id. For example
    *
-   * <pre>{@code
+   * <pre>{
    *   val createPage = Perm.cacheOnId[User, Page] { case (prior, refPage) =>
    *     ...
    *   }
@@ -150,11 +145,13 @@ object Perm {
       def resolve(prior: Approval[U]): Ref[Approved] = PermissionGenerator.this.resolve(prior, r)
     }
 
-    def apply(r:Ref[T]):Ref[Perm[U]] = for { k <- r.refId } yield new POI(k, r)
+    def apply(r:Ref[T]):Ref[Perm[U]] = for { k <- r.refId.require } yield new POI(k, r)
 
     def apply(id:Id[T,K])(implicit lu:LookUp[T, K]):Ref[Perm[U]] = new POI(id, id.lookUp(lu))
 
-    def apply(oid:Option[Id[T,K]])(implicit lu:LookUp[T, K]):Ref[Perm[U]] = apply(oid.lookUp)
+    def apply(oid:Option[Id[T,K]])(implicit lu:LookUp[T, K]):Ref[Perm[U]] = {
+      apply(oid.lookUp)
+    }
   }
 
 }

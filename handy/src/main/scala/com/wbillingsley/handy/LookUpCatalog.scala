@@ -52,12 +52,12 @@ class LookUpCatalog {
             // Note that asInstanceOf here is true because of the constraint in the registration method
             case Some(l:LookUp[_, _]) => l.asInstanceOf[LookUp[T,K]].many(ids)
             
-            case _ => RefFailed(new IllegalArgumentException(s"I don't know how to look up a ${lookupClass.getName} with key ${keyClass.getName}"))
+            case _ => RefManyFailed(new IllegalArgumentException(s"I don't know how to look up a ${lookupClass.getName} with key ${keyClass.getName}"))
           }
         }
         
         // If there are no keys then there a no referred items 
-        case None => RefNone
+        case None => RefEmpty
       }
     }
   }

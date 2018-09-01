@@ -4,8 +4,9 @@ import org.specs2.mutable._
 import realistic._
 import Ref._
 import Id._
+import org.specs2.concurrent.ExecutionEnv
 
-class PermSpec extends Specification {
+class PermSpec(implicit ee: ExecutionEnv) extends Specification {
 
   case class User(id:String)
 
@@ -34,12 +35,13 @@ class PermSpec extends Specification {
     case (prior, r) => for { f <- r } yield Approved("looked it up")
   }
 
+  val userOne:RefOpt[User] = User("User one").itself.optional
 
   "Permissions" should {
 
     "remember an approval for a Perm.onId of the same class and ID" in {
 
-      val approval = Approval[User](RefNone)
+      val approval = Approval[User](userOne)
       val foo1 = Foo("1")
 
       // Ask for the approval for the item itself. This should be cached.
@@ -51,7 +53,7 @@ class PermSpec extends Specification {
 
     "know that an approval for a Perm.cacheOnId with the same ID but a different generator is different" in {
 
-      val approval = Approval[User](RefNone)
+      val approval = Approval[User](userOne)
       val foo1 = Foo("1")
 
       // Ask for the approval for the item itself. This should be cached.

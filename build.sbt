@@ -91,11 +91,8 @@ lazy val handyuser = (project in file("handy-user"))
 
 lazy val aggregate = (project in file("."))
   .aggregate(
-    handyJvm, handyJs,
-    handyreactivemongo,
-    handyappbaseJvm, handyappbaseJs,
-    handyuser,
-    handymongodbasync)
+    handyJvm, handyJs
+  )
   .settings(commonSettings:_*)
   .settings(
     name := "handy-aggregate"

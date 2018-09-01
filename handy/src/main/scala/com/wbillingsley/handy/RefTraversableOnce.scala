@@ -8,155 +8,173 @@ import scala.language.{higherKinds, postfixOps}
 /**
  * A reference to a collection of items.
  */
-case class RefTraversableOnce[T, C[T] <: TraversableOnce[T]](val items: C[T]) extends ResolvedRefMany[T] {
+case class RefTraversableOnce[T, C[TT] <: TraversableOnce[TT]](items: C[T]) extends RefManySync[T] {
     
-  def first = Ref.fromOptionItem(headOption)
-  
-  def headOption = items.toStream.headOption
-  
-  def toOption = headOption
-  
-  def isEmpty = items.isEmpty
-  
-  def map[B](f: T => B) = {
+  override def first:RefOpt[T] = RefOpt(headOption)
+
+  def headOption:Option[T] = items.toStream.headOption
+
+  override def map[B](f: T => B):RefManySync[B] = {
     val result = for (item <- items) yield f(item)
     RefTraversableOnce(result)
-  } 
-  
-  def flatMapMany[B](f: T => RefMany[B]) = new RefTraversableRefMany(items map f)
-
-  def flatMapOne[B](f: T => Ref[B]) = new RefTraversableRef(items map f)  
-  
-  def foreach[U](f: T => U) { items.foreach(f) }
-  
-  def recoverManyWith[B >: T](pf: PartialFunction[Throwable, RefMany[B]]) = this
-  
-  def isTraversableAgain = items.isTraversableAgain
-  
-  def toIterator = items.toIterator
-  
-  def toStream = items.toStream
-  
-  def copyToArray[B >: T](xs:Array[B], start:Int, len:Int) { items.copyToArray(xs, start, len) }
-  
-  def exists(p: T => Boolean) = items.exists(p)
-  
-  def find(p: T => Boolean) = items.find(p)
-  
-  def forall(p: T => Boolean) = items.forall(p)
-  
-  def hasDefiniteSize = items.hasDefiniteSize
-  
-  def seq = items.seq
-  
-  def toTraversable = items.toTraversable
-  
-  def withFilter(p: T => Boolean) = new RefTraversableOnce(items withFilter p)
-  
-  def fold[B](initial: =>B)(each:(B, T) => B) = RefItself(items.foldLeft(initial)(each))
-  
-  def whenReady[B](block: RefMany[T] => B):Ref[B] = RefItself(block(this))
-  
-  override def toRefOne = RefItself(items)
-  
-}
-
-case class RefTraversableRef[T, C[T] <: TraversableOnce[T]](val refs: TraversableOnce[Ref[T]]) extends RefMany[T] {
-  
-  def fetch = RefTraversableOnce(refs.flatMap(_.fetch))
-  
-  def first = Ref.fromOptionItem(headOption)
-
-  def headR = {
-    def firstNonEmpty(s:Stream[Ref[T]]):Ref[T] = {
-      s.headOption match {
-        case Some(r) => r.orIfNone[T](firstNonEmpty(s.tail))
-        case _ => RefNone
-      }
-    }
-
-    firstNonEmpty(refs.toStream)
   }
 
-  def headOption = refs.flatMap(_.fetch).toStream.headOption
+  override def flatMapMany[B](f: T => RefMany[B]) = RefTraversableRefMany(items map f)
+
+  override def flatMapOpt[B](f: T => RefOpt[B]):RefMany[B] = RefTraversableRefOpt(items map f)
+
+  override def flatMapOne[B](f: T => Ref[B]) = RefTraversableRef(items map f)
+
+  override def foreach[U](f: T => U) { items.foreach(f) }
+
+  override def recoverManyWith[B >: T](pf: PartialFunction[Throwable, RefMany[B]]):RefMany[B] = this
+
+  override def withFilter(p: T => Boolean) = RefTraversableOnce(items withFilter p)
   
-  def toOption = headOption
-    
-  def map[B](f: T => B) = {
+  override def foldLeft[B](initial: =>B)(each:(B, T) => B) = RefItself(items.foldLeft(initial)(each))
+  
+  override def whenReady[B](block: RefMany[T] => B):Ref[B] = RefItself(block(this))
+  
+  override def collect = RefItself(items.toSeq)
+
+  override def toSeq: Ref[Seq[T]] = collect
+}
+
+case class RefTraversableRef[T, C[TT] <: TraversableOnce[TT]](refs: TraversableOnce[Ref[T]]) extends RefMany[T] {
+
+  override def first:RefOpt[T] = RefOpt(refs.toTraversable.headOption).flatMapOne(identity)
+
+  override def map[B](f: T => B):RefMany[B] = {
     val result = refs.map(_.map(f))
     RefTraversableRef(result)
   } 
 
-  def flatMapOne[B](f: T => Ref[B]) = {
+  override def flatMapOne[B](f: T => Ref[B]):RefMany[B] = {
     val result = refs.map(_.flatMap(f))
     RefTraversableRef(result)
   }
-  
-  def flatMapMany[B](f: T => RefMany[B]) = {
+
+  override def flatMapOpt[B](func: T => RefOpt[B]): RefMany[B] = {
+    val result = refs.map(_.flatMap(func))
+    RefTraversableRefOpt(result)
+  }
+
+  override def flatMapMany[B](f: T => RefMany[B]):RefMany[B] = {
     val result = refs.map(_.flatMap(f))
     RefTraversableRefMany(result)
   }
 
-  def foreach[U](f: T => U) { refs.foreach(_.foreach(f)) }
+  override def foreach[U](f: T => U) { refs.foreach(_.foreach(f)) }
   
-  def withFilter(p: T => Boolean) = new RefTraversableRef(refs map (_ withFilter p))  
+  override def withFilter(p: T => Boolean):RefMany[T] = {
+    flatMapOpt(x => if (p(x)) RefSome(x) else RefNone)
+  }
   
-  def fold[B](initial: =>B)(each:(B, T) => B) = {
-    import Ref._
-    
+  override def foldLeft[B](initial: =>B)(each:(B, T) => B):Ref[B] = {
+
     refs.foldLeft[Ref[B]](RefItself(initial)){(ar, br) =>
-      for (a <- ar; ob <- optionally(br)) yield { 
-	      ob match {
-	        case Some(b) => each(a,b)
-	        case None => a
-	      }
-      }
+      for (a <- ar; ob <- br) yield each(a, ob)
     }     
   }
   
-  def whenReady[B](block: RefMany[T] => B):Ref[B] = RefItself(block(this))
+  override def whenReady[B](block: RefMany[T] => B):Ref[B] = RefItself(block(this))
   
-  def recoverManyWith[B >: T](pf: PartialFunction[Throwable, RefMany[B]]) = this
+  override def recoverManyWith[B >: T](pf: PartialFunction[Throwable, RefMany[B]]):RefMany[T] = this
 
 }
 
-case class RefTraversableRefMany[T, C[T] <: TraversableOnce[T]](val refs: TraversableOnce[RefMany[T]]) extends RefMany[T] {
+case class RefTraversableRefOpt[+T](refs: TraversableOnce[RefOpt[T]]) extends RefMany[T] {
 
-  def fetch = RefTraversableOnce(refs.flatMap(_.fetch))
-  
-  def first = Ref.fromOptionItem(headOption)
-  
-  def headOption = refs.flatMap(_.fetch).toStream.headOption
-  
-  def toOption = headOption
-  
-  def map[B](f: T => B) = {
+  /** map, as in functors */
+  override def map[B](func: T => B): RefMany[B] = {
+    RefTraversableRefOpt(refs.map(_.map(func)))
+  }
+
+  override def foreach[U](func: T => U): Unit = map(func)
+
+  override def flatMapOne[B](func: T => Ref[B]): RefMany[B] = {
+    RefTraversableRefOpt(refs.map(_.flatMapOne(func)))
+  }
+
+  override def flatMapOpt[B](func: T => RefOpt[B]): RefMany[B] = {
+    RefTraversableRefOpt(refs.map(_.flatMapOpt(func)))
+  }
+
+  override def flatMapMany[B](func: T => RefMany[B]): RefMany[B] = {
+    RefTraversableRefMany(refs.map(_.flatMapMany(func)))
+  }
+
+  override def withFilter(func: T => Boolean): RefMany[T] = {
+    RefTraversableRefOpt(refs.map(_.withFilter(func)))
+  }
+
+  /** TODO: this consumes the whole stream */
+  override def first: RefOpt[T] = refs.foldLeft[RefOpt[T]](RefNone) { (opt, ro) => opt orElse ro }
+
+  /**
+    * A fold across this (possibly asynchronous) collection
+    * initial will only be evaluated in the success case.
+    */
+  override def foldLeft[B](initial: => B)(each: (B, T) => B): Ref[B] = {
+    refs.foldLeft[Ref[B]](RefItself(initial)) { (soFar, ro) =>
+      soFar.flatMapOpt { b =>
+        ro map { t =>
+          each(b, t)
+        } orElse RefSome(b)
+      }.require
+    }
+  }
+
+  /**
+    * Recovers from failures producing the list -- for instance if this is a RefFailed, or a RefFutureRefMany that fails.
+    * Note that it does not recover from individual elements within the list failing.
+    */
+  override def recoverManyWith[B >: T](pf: PartialFunction[Throwable, RefMany[B]]): RefMany[B] = this
+
+  /**
+    * Called when the RefMany is "ready". This is equivalent to
+    * fold(initial){ (_,_) => initial } but without calling the empty folder for each value
+    */
+  override def whenReady[B](f: RefMany[T] => B): Ref[B] = RefItself(f(this))
+}
+
+case class RefTraversableRefMany[T, C[TT] <: TraversableOnce[TT]](refs: TraversableOnce[RefMany[T]]) extends RefMany[T] {
+
+  def first:RefOpt[T] = refs.foldLeft[RefOpt[T]](RefNone) { (opt, rm) => opt orElse rm.first }
+
+  def map[B](f: T => B):RefMany[B] = {
     val result = refs.map(_.map(f))
     RefTraversableRefMany(result)
   } 
 
-  def flatMapOne[B](f: T => Ref[B]) = {
+  def flatMapOne[B](f: T => Ref[B]):RefMany[B] = {
     val result = refs.map(_.flatMap(f))
     RefTraversableRefMany(result)
   }
-  
-  def flatMapMany[B](f: T => RefMany[B]) = {
+
+  override def flatMapOpt[B](func: T => RefOpt[B]): RefMany[B] = {
+    val result = refs.map(_.flatMap(func))
+    RefTraversableRefMany(result)
+  }
+
+  def flatMapMany[B](f: T => RefMany[B]):RefMany[B] = {
     val result = refs.map(_.flatMap(f))
     RefTraversableRefMany(result)
   }
 
   def foreach[U](f: T => U) { refs.foreach(_.foreach(f)) }
   
-  def withFilter(p: T => Boolean) = new RefTraversableRefMany(refs map (_ withFilter p)) 
+  def withFilter(p: T => Boolean) = RefTraversableRefMany(refs map (_ withFilter p))
   
-  def fold[B](initial: =>B)(each:(B, T) => B) = {
+  override def foldLeft[B](initial: =>B)(each:(B, T) => B):Ref[B] = {
     refs.foldLeft[Ref[B]](RefItself(initial)){(ar, refMany) =>
-      ar.flatMap(a => refMany.fold(a)(each))
+      ar.flatMapOne(a => refMany.foldLeft(a)(each))
     }     
   }
 
   def whenReady[B](block: RefMany[T] => B):Ref[B] = RefItself(block(this))
   
-  def recoverManyWith[B >: T](pf: PartialFunction[Throwable, RefMany[B]]) = this
-  
+  def recoverManyWith[B >: T](pf: PartialFunction[Throwable, RefMany[B]]):RefMany[B] = this
+
+
 }

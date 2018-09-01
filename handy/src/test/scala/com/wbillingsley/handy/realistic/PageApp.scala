@@ -2,6 +2,7 @@ package com.wbillingsley.handy.realistic
 
 import com.wbillingsley.handy._
 import Ref._
+import Id._
 import WebFramework._
 
 /*
@@ -14,8 +15,8 @@ object PageApp {
   import Security._
   
   def setPageContent(loggedInUser:Option[Int], pageId:Option[Int], content:String):Ref[Response] = {
-    val u = Ref.fromOptionId[User, Int](loggedInUser)
-    val p = Ref.fromOptionId[Page, Int](loggedInUser)
+    val u = RefOpt(loggedInUser).flatMap(_.asId[User].lazily)
+    val p = RefOpt(pageId).flatMap(_.asId[Page].lazily).require
     for {
       approval <- Approval(u) ask canEdit(p);
       page <- p
@@ -26,20 +27,20 @@ object PageApp {
   }
   
   def createPage(loggedInUser:Option[Int], content:String):Ref[Response] = {
-    val u = Ref.fromOptionId[User, Int](loggedInUser)
+    val u = RefOpt(loggedInUser).flatMap(_.asId[User].lazily)
     
     for {
-      user <- optionally(u);
-      approval <- Approval(user) ask canCreate;
-      page <- DB.createPage(user, content)
+      approval <- Approval(u) ask canCreate;
+      user <- u.require
+      page <- DB.createPage(user.itself, content)
     } yield {
       Ok("{ \"page\" : \"" + page.content + "\" }")
     }
   }	  
   
   def viewPage(loggedInUser:Option[Int], pageId:Option[Int]):Ref[Response] = {
-    val u = Ref.fromOptionId[User, Int](loggedInUser)
-    val p = Ref.fromOptionId[Page, Int](pageId)
+    val u = RefOpt(loggedInUser).flatMap(_.asId[User].lazily)
+    val p = RefOpt(pageId).flatMap(_.asId[Page].lazily).require
     
     for {
       page <- p;

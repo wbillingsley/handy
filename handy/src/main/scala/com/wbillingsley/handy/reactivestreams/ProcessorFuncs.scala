@@ -1,9 +1,10 @@
 package com.wbillingsley.handy.reactivestreams
 
 import com.wbillingsley.handy._
-import org.reactivestreams.{Subscriber, Subscription, Processor, Publisher}
+import org.reactivestreams.{Processor, Publisher, Subscriber, Subscription}
 
-import scala.concurrent.{ExecutionContext, Promise, Future}
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 
 /**
   * A Processor that (possibly asynchronously) processes each item.
@@ -13,7 +14,8 @@ import scala.concurrent.{ExecutionContext, Promise, Future}
   */
 object ProcessorFuncs {
 
-  def headR[T](publisher: Publisher[T])(implicit ec:ExecutionContext) = {
+
+  def headOption[T](publisher: Publisher[T])(implicit ec:ExecutionContext):RefOpt[T] = {
 
     val p = Promise[Option[T]]
 
@@ -32,10 +34,7 @@ object ProcessorFuncs {
       override def onNext(t: T): Unit = if (!p.isCompleted) p.success(Some(t))
     })
 
-    for {
-      o <- new RefFuture(p.future)
-      item <- Ref(o)
-    } yield item
+    RefFuture(p.future).flatMapOpt(RefOpt.apply)
   }
 
   def collect[T](publisher:Publisher[T])(implicit ec:ExecutionContext):Ref[Seq[T]] = {
@@ -56,7 +55,7 @@ object ProcessorFuncs {
 
       override def onComplete(): Unit = {
         println("received complete")
-        if (!p.isCompleted) p.success(b.toSeq)
+        if (!p.isCompleted) p.success(b)
       }
 
       override def onNext(t: T): Unit = {
@@ -72,9 +71,9 @@ object ProcessorFuncs {
 
   implicit class ProcessorOps[T](val p:Publisher[T]) extends AnyVal {
 
-    def mapR[B](f: T => Ref[B])(implicit ec:ExecutionContext):Processor[T, B] = new MapR[T, B](p)(f)
+    def mapR[B](f: T => RefOpt[B])(implicit ec:ExecutionContext):Processor[T, B] = new MapR[T, B](p)(f)
 
-    def map[B](f: T => B)(implicit ec:ExecutionContext):Processor[T, B] = new MapR[T, B](p)(f.andThen(RefItself.apply))
+    def map[B](f: T => B)(implicit ec:ExecutionContext):Processor[T, B] = new MapR[T, B](p)(f.andThen(RefSome.apply))
 
   }
 

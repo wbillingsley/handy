@@ -22,7 +22,7 @@ class ConcatRM[T](pubs:RefMany[Publisher[T]])(implicit ec:ExecutionContext) exte
     * Subscribe to the next one, or complete
     */
   private def start() = {
-    pubs.fold[Future[Boolean]](Future.successful(false))({ case (last, next) =>
+    pubs.foldLeft[Future[Boolean]](Future.successful(false))({ case (last, next) =>
       last.flatMap { ready =>
         next.subscribe(this)
         synchronized {

@@ -1,10 +1,11 @@
 package com.wbillingsley.handy
 
 import org.specs2.mutable._
-import realistic._ 
+import realistic._
 import Ref._
+import org.specs2.concurrent.ExecutionEnv
 
-class LookUpCacheSpec extends Specification {
+class LookUpCacheSpec(implicit ee: ExecutionEnv) extends Specification {
       
   
   "LookUpCache" should {
@@ -18,7 +19,7 @@ class LookUpCacheSpec extends Specification {
       val refOne = LazyId(1).of[Page]
 
       val a = for (p <- cache(refOne)) yield p.id.id
-      a.toFutOpt must be_==(Some(1)).await
+      a.toFuture must be_==(1).await
     }    
       
     "find assignable items in the cache" in {
@@ -28,7 +29,7 @@ class LookUpCacheSpec extends Specification {
       import DB._
  
       // This should become a reference to a database class 
-      val p1itself = LazyId(1).of[Page].fetch
+      val p1itself = LazyId(1).of[Page].lookUp
       
       // Put it into the cache
       cache(p1itself)

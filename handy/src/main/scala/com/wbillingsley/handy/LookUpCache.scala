@@ -37,7 +37,7 @@ class LookUpCache {
     r match {
       case li:LazyId[T, KK] => {
         val rPair = for {
-          id <- li.refId(g)
+          id <- li.refId(g).require
         } yield LookUpPair(id, lu)
 
         rPair flatMap { pair =>
@@ -45,7 +45,7 @@ class LookUpCache {
         }
       }
       case r:Ref[T] => {
-        r.refId flatMap { id =>
+        r.refId.require flatMap { id =>
           val pair = LookUpPair(id, lu)
           store(pair, r)
         }

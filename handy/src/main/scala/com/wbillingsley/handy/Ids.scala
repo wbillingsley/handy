@@ -31,8 +31,7 @@ object Ids {
 
   implicit class ManyIdToIds[T, K](val m:RefMany[Id[T,K]]) extends AnyVal {
     def toIds:Ref[Ids[T,K]] = for {
-      singleIds <- m.toRefOne
-      seq = singleIds.toSeq
+      seq <- m.collect
       ids = seq.map(_.id).asIds[T]
     } yield ids
   }
