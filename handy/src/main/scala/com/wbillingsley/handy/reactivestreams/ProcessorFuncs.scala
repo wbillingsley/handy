@@ -59,7 +59,7 @@ object ProcessorFuncs {
       }
 
       override def onNext(t: T): Unit = {
-        println(s"received $t")
+        //println(s"received $t")
         b.append(t)
         for { s <- os } s.request(1)
       }

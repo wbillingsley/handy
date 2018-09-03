@@ -30,7 +30,7 @@ class ConcatRM[T](pubs:RefMany[Publisher[T]])(implicit ec:ExecutionContext) exte
         }
         completedCurrent.future
       }
-    }).toFuture.flatMap(identity _).map({ done =>
+    }).toFuture.flatMap(identity).map({ done =>
       for { o <- outbound } { o.pushComplete() }
       done
     }).recoverWith { case x =>

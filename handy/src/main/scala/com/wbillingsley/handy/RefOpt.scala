@@ -184,7 +184,7 @@ case class RefOptFailed(t:Throwable) extends RefOpt[Nothing] with RefOptSync[Not
 
   override def orElse[B >: Nothing](f: => RefOpt[B]):RefOpt[B] = this
 
-  override def recoverWith[B >: Nothing](pf: PartialFunction[Throwable, RefOpt[B]]) = {
+  override def recoverWith[B >: Nothing](pf: PartialFunction[Throwable, RefOpt[B]]):RefOpt[B] = {
     pf.applyOrElse(t, { _:Throwable => this })
   }
 
