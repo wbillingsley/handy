@@ -42,7 +42,9 @@ lazy val handy = (crossProject.crossType(CrossType.Pure) in file("handy"))
   .settings(
     name := "handy",
 
-    libraryDependencies += "org.reactivestreams" % "reactive-streams" % "1.0.0"
+    libraryDependencies += "org.reactivestreams" % "reactive-streams" % "1.0.0",
+    libraryDependencies += "com.typesafe.akka" %% "akka-stream" % "2.5.19" % "test",
+    libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.5.19" % "test" 
   )
 
 lazy val handyJvm = handy.jvm

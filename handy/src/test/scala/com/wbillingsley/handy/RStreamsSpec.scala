@@ -19,27 +19,6 @@ class RStreamsSpec(implicit ee: ExecutionEnv) extends Specification {
     nums.flatMapOne[Int](_ => RefFuture(Future.apply(x)))
   })
 
-  "DemandCounter" should {
-
-    "sequence sends" in {
-      val num = 100000
-      val seq = 0 until num
-      val dc = new DemandCounter()
-
-      def next(i:Int) = { dc.demand(1); i + 1 }
-
-      val sends:RefMany[Int] = for {
-        i <- seq.toRefMany
-        r <- new RefFuture(dc.requestToSend())
-      } yield next(i)
-
-      dc.demand(1)
-
-      sends.collect.map(_.length).toFuture must be_==(num).await
-    }
-
-  }
-
   "RMPublisher" should {
 
     "Stream a Seq into a Seq without corrupting it" in {
@@ -142,11 +121,14 @@ class RStreamsSpec(implicit ee: ExecutionEnv) extends Specification {
 
 
     "concat async 2" in {
+
+      // Create a Publisher of completed Futures
       def stream(x:Int) = new RMPublisher({
         val nums = RefTraversableOnce(0 until x)
         nums.flatMapOne[Int](_ => RefFuture(Future.apply(x)))
       })
 
+      // Create a Publisher of a RefMany that is backed by a Range.
       def streamSync(x:Int) = new RMPublisher(RefTraversableOnce(0 until x))
 
       val mapped:Publisher[Publisher[Int]] = streamSync(3).map({ _ => stream(10) })
