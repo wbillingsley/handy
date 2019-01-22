@@ -18,7 +18,9 @@ import scala.concurrent.duration._
 
 trait WithAkka extends After {
     implicit val system = ActorSystem("QuickStart")
-    implicit val materializer = ActorMaterializer()
+    implicit val materializer = ActorMaterializer(ActorMaterializerSettings(system).withInputBuffer(
+      initialSize = 16,
+      maxSize = 16))
 
     def counter(start:Int, end:Int) = Source(start until end).throttle(1, 1.millisecond)
 
