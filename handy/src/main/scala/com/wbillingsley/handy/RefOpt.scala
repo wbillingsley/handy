@@ -45,6 +45,8 @@ trait RefOpt[+T] extends RSuper[T] {
   /** If the RefOpt evaluates to not containing a value, f will be produced instead */
   def orElse[B >: T](f: => RefOpt[B]):RefOpt[B]
 
+  def option:Ref[Option[T]]
+
   /** For recovery from failures */
   def recoverWith[B >: T](pf: PartialFunction[Throwable, RefOpt[B]]):RefOpt[B]
 
@@ -132,6 +134,8 @@ case object RefNone extends RefOptSync[Nothing] {
   override def recoverWith[B >: Nothing](pf: PartialFunction[Throwable, RefOpt[B]]): RefOpt[Nothing] = this
 
   override def withFilter(pred: Nothing => Boolean):RefOpt[Nothing] = this
+
+  override def option: Ref[Option[Nothing]] = RefItself(None)
 }
 
 /**
@@ -162,6 +166,8 @@ case class RefSome[+T](v:T) extends RefOptSync[T] {
   override def recoverWith[B >: T](pf: PartialFunction[Throwable, RefOpt[B]]): RefOpt[T] = this
 
   override def withFilter(pred: T => Boolean):RefOpt[T] = if (pred(v)) this else RefNone
+
+  override def option: Ref[Option[T]] = RefItself(Some(v))
 }
 
 /**
@@ -193,4 +199,6 @@ case class RefOptFailed(t:Throwable) extends RefOpt[Nothing] with RefOptSync[Not
   override def toTry: Try[Option[Nothing]] = Failure(t)
 
   override def withFilter(pred: Nothing => Boolean):RefOpt[Nothing] = this
+
+  override def option: Ref[Option[Nothing]] = RefFailed(t)
 }

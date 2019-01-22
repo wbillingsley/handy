@@ -43,7 +43,7 @@ class TakeWhileR[T](pub:Publisher[T])(f: T => Ref[Boolean])(implicit val ec: Exe
   override def onNext(t: T): Unit = {
     for {
       s <- inbound
-      processed <- f(t).optional.withFilter(identity) orElse {
+      processed <- f(t).toRefOpt.withFilter(identity) orElse {
         // If processed is false, time to stop
         s.cancel(); RefNone
       } recoverWith {

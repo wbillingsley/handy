@@ -10,13 +10,20 @@ import org.specs2.concurrent.ExecutionEnv
 
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
+import scala.concurrent.duration._
 
 class RStreamsSpec(implicit ee: ExecutionEnv) extends Specification {
+
+  def refManyFutures(x:Int) = new RMPublisher({
+    val nums = RefTraversableOnce(0 until x)
+    nums.flatMapOne[Int](_ => RefFuture(Future.apply(x)))
+  })
 
   "DemandCounter" should {
 
     "sequence sends" in {
-      val seq = Seq(1,2,3,4)
+      val num = 100000
+      val seq = 0 until num
       val dc = new DemandCounter()
 
       def next(i:Int) = { dc.demand(1); i + 1 }
@@ -28,7 +35,7 @@ class RStreamsSpec(implicit ee: ExecutionEnv) extends Specification {
 
       dc.demand(1)
 
-      sends.collect.toFuture must be_==(Seq(2, 3, 4, 5)).await
+      sends.collect.map(_.length).toFuture must be_==(num).await
     }
 
   }
@@ -135,50 +142,50 @@ class RStreamsSpec(implicit ee: ExecutionEnv) extends Specification {
 
 
     "concat async 2" in {
-      val ass = new AsyncStreamer
+      def stream(x:Int) = new RMPublisher({
+        val nums = RefTraversableOnce(0 until x)
+        nums.flatMapOne[Int](_ => RefFuture(Future.apply(x)))
+      })
 
-      // A stream of 100 asynchronus numbers, each mapped to add another asynchronus number
-      def stream(x:Int) = new RMPublisher(ass.getX(x))
       def streamSync(x:Int) = new RMPublisher(RefTraversableOnce(0 until x))
 
-      val mapped:Publisher[Publisher[Int]] = streamSync(3).map({ _ => println("generating a stream"); stream(10)})
+      val mapped:Publisher[Publisher[Int]] = streamSync(3).map({ _ => stream(10) })
       val cc = new ConcatProcessor[Int](mapped)
-      ass.completeThePromises()
 
       ProcessorFuncs.collect(cc).toFuture must be_==((3 until 33)).await
     }
 
 
-    "concat async" in {
-      val ass = new AsyncStreamer
+    "concatenate RefMany publishers" in {
+      val i = 50
+      val j = 50
 
-      // A stream of 100 asynchronus numbers, each mapped to add another asynchronus number
-      def stream(x:Int) = new RMPublisher(ass.getX(x))
+      def stream(x:Int) = new RMPublisher({
+        val nums = RefTraversableOnce(0 until x)
+        nums.flatMapOne[Int](i => RefFuture(Future.apply(i)))
+      })
 
-      val mapped = stream(2).map(_ => stream(10)).toRefMany
-      for {
-        m <- mapped
-      } println("POO" + m)
+      val mapped = stream(i).map(_ => stream(j)).toRefMany
       val cc = new ConcatRM[Int](mapped)
-      ass.completeThePromises()
 
-      ProcessorFuncs.collect(cc).toFuture must be_==((3 until 33)).await
+      ProcessorFuncs.collect(cc).map(_.length).toFuture must be_==(i * j).await
     }
 
 
-    "flatMap across genuinely asynchonrous streams correctly" in {
+    "flatMap across asynchronous streams correctly" in {
 
       val ass = new AsyncStreamer
 
       // A stream of 100 asynchronus numbers, each mapped to add another asynchronus number
       // def stream(x:Int) = new RMPublisher(getX(x))
-       def stream(x:Int) = new MapR[Int, Int](new RMPublisher(ass.getX(x)))({ case i => RefSome(1 + i) })
+      // def stream(x:Int):MapR[Int, Int] = new MapR(new RMPublisher(ass.getX(x)))({ i => RefSome(1 + i) })
+      def stream(x:Int) = refManyFutures(x).toRefMany.map(_ + 1)
 
       // Now, if in our test we sum two streams, we should get 0..99 + 100..199 + 200..299 + 300..399 but the order
       // is unknown
 
-      val stream1 = stream(10).toRefMany
-      val stream2 = stream(10).toRefMany
+      val stream1 = stream(2) //.toRefMany
+      val stream2 = stream(2) //.toRefMany
 
       val result = for {
         i1 <- stream1
@@ -193,6 +200,21 @@ class RStreamsSpec(implicit ee: ExecutionEnv) extends Specification {
       result.foldLeft(0)(_ + _).toFuture must be_==((0 until 400).sum).await
     }
 
+  }
+
+  "AsyncStreamer" should {
+    "provide the numbers 0 to 100" in {
+      val streamer = new AsyncStreamer
+
+      val many = streamer.getX(1000)
+
+      val sum = many.foldLeft(0)( _ + _).toFuture
+
+      streamer.completeThePromises()
+
+      sum must be_==((0 until 1000).sum).await
+
+    }
   }
 
 }
@@ -219,11 +241,11 @@ class AsyncStreamer {
 
 
   // At the end, we're just going to complete each promise with a successive number
-  def completeThePromises() = {
+  def completeThePromises():Int = {
     for {
       (p, i) <- promises.zipWithIndex
     } p.success(i)
-    println(s"Completed ${promises.length} promises")
+    promises.length
   }
 
   // A reference to one promise
@@ -231,7 +253,6 @@ class AsyncStreamer {
 
   // A reference to many promises
   def getX(x:Int):RefMany[Int] = {
-    println(s"asked for $x numbers")
     val sf = for (i <- 0 until x) yield {
       asyncFunc()
     }

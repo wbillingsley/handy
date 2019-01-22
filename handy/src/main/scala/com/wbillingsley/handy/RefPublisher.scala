@@ -35,7 +35,7 @@ class RefPublisher[+T](publisher:Publisher[T])(implicit val ec: ExecutionContext
   override def map[B](func: (T) => B): RefMany[B] = flatMapOne { x => RefItself(func(x)) }
 
   override def flatMapOne[B](func: (T) => Ref[B]): RefMany[B] = {
-    new RefPublisher(new MapR(publisher)(func.andThen(_.optional)))
+    new RefPublisher(new MapR(publisher)(func.andThen(_.toRefOpt)))
   }
 
   override def flatMapOpt[B](func: T => RefOpt[B]): RefMany[B] = {

@@ -53,9 +53,9 @@ object Ref {
     def itself = RefItself(it)
   }
 
-  implicit def fromOption[T](opt: Option[T]):RefOpt[T] = RefOpt.apply(opt)
+  def fromOption[T](opt: Option[T]):RefOpt[T] = RefOpt.apply(opt)
 
-  implicit def fromFuture[T](fut: Future[T])(implicit ec:ExecutionContext):RefFuture[T] = {
+  def fromFuture[T](fut: Future[T])(implicit ec:ExecutionContext):RefFuture[T] = {
     new RefFuture(fut)(ec)
   }
 
@@ -170,9 +170,11 @@ trait Ref[+T] extends RSuper[T] {
 
   def toFuture:Future[T]
 
-  def optional:RefOpt[T] = this.flatMapOpt(RefSome.apply) recoverWith {
+  def toRefOpt:RefOpt[T] = this.flatMapOpt(RefSome.apply) recoverWith {
     case _:NoSuchElementException => RefNone
   }
+
+  def option:Ref[Option[T]] = toRefOpt.option
 
 }
 

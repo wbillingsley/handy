@@ -30,7 +30,7 @@ class ApprovalSpec extends Specification {
   
   "Approval" should {
     "Approve a simple request" in {
-      val a = Approval(fred.itself.optional)
+      val a = Approval(fred.itself.toRefOpt)
 
       a ask CanDoOdd(1) must be_==(RefItself(Approved("Yes, it was odd")))
     }

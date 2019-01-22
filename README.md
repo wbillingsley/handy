@@ -1,6 +1,49 @@
 ## Handy
 
-**Handy** is a small library that makes writing asynchronous applications easier. It has a simple but expressive way of writing security rules. It has a simple way of handling lazy lookups. It keeps everything neatly separable, so you're not too tighly coupled to your database or web framework.
+**Handy** is a small library that makes writing asynchronous applications easier in Scala and Scala.js. 
+
+* It makes working with for-comprehensions across `Future`, `Future[Option]` and reactive streams simpler by handling *plurality*.
+
+  ```scala
+  (for {
+    a <- futureSomething().toRef            // Ref[A]
+    b <- producesAnOptionB(a).toRefOpt      // RefOpt[B]
+    c <- thereAreLotsOfTheseCs(b).toRefMany // RefMany[C]
+    d <- eachChasOneD(c).toRef              // RefMany[D] because we had many C 
+  } yield d).stream                         // Publisher[D]
+  ```
+
+* It also introduces *Latch* -- a single-item lazy clearable calculation that makes flux- and redux-like data flow in Scala.js apps very simple. 
+
+* It includes a simple mechanism for object IDs and lookups 
+
+* It also introduces a very simple permissions system, based on a wallet of approvals, that lets you describe complex approval rules in an asynchronous, functional manner.
+
+
+### How does it compare to other async libraries?
+
+The approach taken in libraries such as scalaz and Monix is to discourage the use of Scala's `Future` class. The argument is that `Future`s are evaluated strictly (eagerly) and therefore are not referentially transparent. This is problematic in the pure functional community, and so lazy representations (usually called `Task`) are encouraged instead.
+
+Handy just builds directly on top of `Future`, making them easier to work with. `Future` is not pure, but I do not believe it was ever intended to be. Its behaviour -- that it represents an asynchronous calculation that immediately executed and cached when ready -- seems quite well understood by Scala programmers and also matches the corresponding `Promise` in JavaScript. 
+
+Handy is here to make the common classes a little easier to work with.
+
+
+### How do the for-comprehensions work under the hood?
+ 
+Except for the fact that `Future` is impure `Ref[T]`, `RefOpt[T]` and `RefMany[T]` are all monads. However, their bind function is called `bind` rather than `flatMap`.
+
+To make for-comprehensions work, all three traits implement these three methods:
+
+* `flatMapOne[B](r:Ref[B])`
+
+* `flatMapOpt[B](ro:RefOpt[B])`
+
+* `flatMapMany[B](rm:RefMany[B])`
+
+`flatMap` is then defined to take an implicit parameter that will redirect it to the correct call.
+
+This lets the type-checker, for instance, correctly determine the plurality of the output. If you flatMap one-to-opt you'll produce a `RefOpt` but if you flatMap many-to-opt you'll produce a `RefMany`.
 
 ### How to obtain it
 
@@ -8,13 +51,7 @@ Add this to your build.sbt file
 
     resolvers += Resolver.sonatypeRepo("snapshots")
 
-    libraryDependencies += "com.wbillingsley" %% "handy" % "0.6.0-SNAPSHOT"
-
-There are also some (entirely optional and incredibly small) modules for working with Play! 2.0 web framework, or working with MongoDB, though they are less mature: 
-
-    libraryDependencies += "com.wbillingsley" %% "handy-play" % "0.6.0-SNAPSHOT"
-
-    libraryDependencies += "com.wbillingsley" %% "handy-reactivemongo" % "0.6.0-SNAPSHOT"
+    libraryDependencies += "com.wbillingsley" %% "handy" % "0.9.0-SNAPSHOT"
 
 
 ## Why handy?

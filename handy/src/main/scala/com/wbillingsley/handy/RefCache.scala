@@ -29,7 +29,7 @@ class RefCache[K, V]() {
 
   def put(key:K, v: Ref[V]) = synchronized {
     cache.put(key, v)
-    for (l <- listeners) l.apply(key, v.optional)
+    for (l <- listeners) l.apply(key, v.toRefOpt)
   }
 
   def remove(key:K) = synchronized {
@@ -59,7 +59,7 @@ object RefCache {
     * Called whenever any Cache changes state. Useful in situations such as React.js, where the entire UI state is
     * regenerated on any change of state
     */
-  def globalNotify(id:Any, evt:Ref[Any]) = listeners.foreach(_.apply(id, evt.optional))
+  def globalNotify(id:Any, evt:Ref[Any]) = listeners.foreach(_.apply(id, evt.toRefOpt))
 
   /**
     * Adds a listener function that will be called whenever any Latch changes state. This is useful, for example,

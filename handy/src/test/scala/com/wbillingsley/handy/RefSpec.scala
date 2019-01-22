@@ -182,7 +182,7 @@ class RefSpec(implicit ee: ExecutionEnv) extends Specification {
 
     "Support empty look ups" in {
       var foo:LazyId[TItem, _] = LazyId.empty
-      foo.optional.toFutureOpt must be_==(None).await
+      foo.toRefOpt.toFutureOpt must be_==(None).await
     }
 
     "Support lookups of RefManys" in {

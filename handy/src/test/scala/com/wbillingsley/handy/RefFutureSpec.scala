@@ -4,11 +4,29 @@ import org.specs2.mutable._
 import Ref._
 import org.specs2.concurrent.ExecutionEnv
 
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration._
 
 class RefFutureSpec(implicit ee: ExecutionEnv) extends Specification {
 
   "RefFutures" should {
+
+
+    "fold across futures in a reasonable time" in {
+
+      val range = 0 until 10000
+      val tasks = range.map(i => (x:Int) => RefFuture(Future.apply(x + i)))
+      val result = tasks.foldLeft[Ref[Int]](RefFuture(Future.successful(0))) { (soFar, task) => soFar.flatMap(task) }
+
+      result.toFuture must be_==(range.sum).awaitFor(60.seconds)
+
+
+/*      val tasks = range.map(i => (x:Int) => Future.apply(x + i))
+      val result = tasks.foldLeft[Future[Int]](Future.successful(0)) { (soFar, task) => soFar.flatMap(task) }
+
+      result must be_==(range.sum).awaitFor(60.seconds)
+      */
+    }
 
     "use an implicit execution context if one is in scope" in {
 

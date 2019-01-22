@@ -30,8 +30,7 @@ case class RefFuture[+T](future: Future[T])(implicit val executionContext:Execut
   }
     
   def flatMapOne[B](f: T => Ref[B]):Ref[B] = {
-    val result:Future[Ref[B]] = future.map(f)
-    RefFutureRef(result)
+    RefFuture(future.flatMap(f.andThen(_.toFuture)))
   }
 
   override def flatMapOpt[B](func: T => RefOpt[B]): RefOpt[B] = {
@@ -165,4 +164,5 @@ case class RefFutureRefOpt[+T](future: Future[RefOpt[T]])(implicit val execution
     RefFutureRefOpt(future.map(_.withFilter(p)))
   }
 
+  override def option: Ref[Option[T]] = RefFuture(future.flatMap(_.toFutureOpt))
 }

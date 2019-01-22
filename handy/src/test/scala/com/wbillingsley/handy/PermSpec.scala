@@ -35,7 +35,7 @@ class PermSpec(implicit ee: ExecutionEnv) extends Specification {
     case (prior, r) => for { f <- r } yield Approved("looked it up")
   }
 
-  val userOne:RefOpt[User] = User("User one").itself.optional
+  val userOne:RefOpt[User] = User("User one").itself.toRefOpt
 
   "Permissions" should {
 
