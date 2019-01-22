@@ -23,13 +23,15 @@ object WebFramework {
 
     import ImplicitResponses._
 
-    path match {
-
-      case "page" :: "create" :: "POST" :: Nil => PageApp.createPage(loggedInUser, data.getOrElse("content", "No content")).toFuture
-      case "page" :: id :: "GET" :: Nil => PageApp.viewPage(loggedInUser, Some(id.toInt)).toFuture
-      case "page" :: id :: "POST" :: Nil => PageApp.setPageContent(loggedInUser, Some(id.toInt), data.getOrElse("content", "No content")).toFuture
-      case _ => Future { PlainResponse(404, "Not found") }
-    }
+    (path match {
+      case "page" :: "create" :: "POST" :: Nil => PageApp.createPage(loggedInUser, data.getOrElse("content", "No content"))
+      case "page" :: id :: "GET" :: Nil => PageApp.viewPage(loggedInUser, Some(id.toInt))
+      case "page" :: id :: "POST" :: Nil => PageApp.setPageContent(loggedInUser, Some(id.toInt), data.getOrElse("content", "No content"))
+      case _ => PlainResponse(404, "Not found").itself
+    }).recoverWith {
+      case Refused(x) => PlainResponse(403, x).itself
+      case x:Throwable => PlainResponse(500, x.getMessage).itself
+    }.toFuture
   }
 
 }
