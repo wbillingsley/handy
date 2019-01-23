@@ -14,11 +14,6 @@ import scala.concurrent.duration._
 
 class RStreamsSpec(implicit ee: ExecutionEnv) extends Specification {
 
-  def refManyFutures(x:Int) = new RMPublisher({
-    val nums = RefTraversableOnce(0 until x)
-    nums.flatMapOne[Int](_ => RefFuture(Future.apply(x)))
-  })
-
   "RMPublisher" should {
 
     "Stream a Seq into a Seq without corrupting it" in {
@@ -132,35 +127,6 @@ class RStreamsSpec(implicit ee: ExecutionEnv) extends Specification {
       val cc = new ConcatRM[Int](mapped)
 
       ProcessorFuncs.collect(cc).map(_.length).toFuture must be_==(i * j).await
-    }
-
-
-    "flatMap across asynchronous streams correctly" in {
-
-      val ass = new AsyncStreamer
-
-      // A stream of 100 asynchronus numbers, each mapped to add another asynchronus number
-      // def stream(x:Int) = new RMPublisher(getX(x))
-      // def stream(x:Int):MapR[Int, Int] = new MapR(new RMPublisher(ass.getX(x)))({ i => RefSome(1 + i) })
-      def stream(x:Int) = refManyFutures(x).toRefMany.map(_ + 1)
-
-      // Now, if in our test we sum two streams, we should get 0..99 + 100..199 + 200..299 + 300..399 but the order
-      // is unknown
-
-      val stream1 = stream(2) //.toRefMany
-      val stream2 = stream(2) //.toRefMany
-
-      val result = for {
-        i1 <- stream1
-        i2 <- stream2
-      } yield {
-        println(s"i1 $i1 i2 $i2")
-        i1 + i2
-      }
-
-      ass.completeThePromises()
-
-      result.foldLeft(0)(_ + _).toFuture must be_==((0 until 400).sum).awaitFor(10.seconds)
     }
 
   }

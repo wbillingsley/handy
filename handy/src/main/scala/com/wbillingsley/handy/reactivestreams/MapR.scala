@@ -40,10 +40,16 @@ class MapR[T, R](pub:Publisher[T])(f: T => RefOpt[R])(implicit val ec: Execution
     s.request(1)
   }
 
-  override def onComplete(): Unit = {
+  override def onComplete(): Unit = synchronized {
     for { sq <- outbound } {
       sq.pushComplete()
     }
+    outbound.clear
+
+    // TODO: Check this is safe. 
+    // If we don't do this, then subsequent calls to subscribe will cause subscribers to receive a subscription that will never receive
+    // events (as we never re-subscribe to the originating stream)
+    subscribed = false
   }
 
   override def onNext(t: T): Unit = {

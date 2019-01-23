@@ -43,8 +43,9 @@ class RefPublisher[+T](publisher:Publisher[T])(implicit val ec: ExecutionContext
   }
 
   override def flatMapMany[B](func: (T) => RefMany[B]): RefMany[B] = {
-    val manyPubs = map(func.andThen(new RMPublisher(_)))
-    val concatenated:Publisher[B] = new ConcatRM(manyPubs)
+    val publisherOfPubs:Publisher[Publisher[B]] = new MapR(publisher)({ x => RefSome(new RMPublisher(func(x))) })
+    //val manyPubs = map(func.andThen(new RMPublisher(_)))
+    val concatenated:Publisher[B] = new ConcatProcessor(publisherOfPubs)
     new RefPublisher(concatenated)
   }
 

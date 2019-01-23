@@ -57,6 +57,34 @@ class RMPublisherSpec(implicit ee: ExecutionEnv) extends Specification {
             check must be_==((true, 9, 10)).await
         }      
 
+        "flatMap across asynchronous streams correctly" in new WithAkka {
+            val result = for {
+                i1 <- counterPublisher(0, 10).toRefMany
+                i2 <- counterPublisher(10, 20).toRefMany
+            } yield {
+                i1 + i2
+            }
+
+            result.foldLeft(0)(_ + _).toFuture must be_==((for { i <- 0 until 10; j <- 10 until 20} yield i+j).sum).awaitFor(10.seconds)
+        }                
+
+        "flatMap across asynchronous streams correctly" in new WithAkka {
+
+            def restream(x:Int) = counterPublisher(0, x).toRefMany.map(_ + 1)
+
+            val stream1 = restream(2) 
+            val stream2 = restream(2) 
+
+            val result = for {
+                i1 <- stream1
+                i2 <- stream2
+            } yield {
+                i1 + i2
+            }
+
+            result.foldLeft(0)(_ + _).toFuture must be_==(5).awaitFor(1.seconds)
+        }        
+
     }
 
 }
