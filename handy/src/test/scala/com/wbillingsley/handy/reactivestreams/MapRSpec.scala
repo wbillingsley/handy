@@ -9,6 +9,7 @@ import ProcessorFuncs._
 import org.reactivestreams.Publisher
 
 import scala.concurrent.Future
+import akka.stream.scaladsl._
 
 class MapRSpec(implicit ee: ExecutionEnv) extends Specification {
 
@@ -25,17 +26,16 @@ class MapRSpec(implicit ee: ExecutionEnv) extends Specification {
 
     }
 
-    "convert a short asynchronous stream" in {
+    "map a stream of numbers, interoperably with Akka" in new WithAkka {
+      val publisher = counterPublisher(0, 100)
+      val mapped = new MapR(publisher)({ x => RefSome(x * 2)})
 
-      val short:RefMany[Int] = (0 until 4).toRefMany.flatMapOne(x => Future.apply(x).toRef)
-      val pub = new RMPublisher(short)
+      val mappedSource = Source.fromPublisher(mapped)
+      val received = mappedSource.runWith(Sink.seq)
 
-      val doubled:Publisher[Int] = pub.map(_ * 2)
-
-      doubled.toRefMany.collect.toFuture must be_==(Seq(0, 2, 4, 6)).await
-
+      received.map(_.sum) must be_==((0 until 100).sum * 2).await
     }
 
   }
-
+  
 }

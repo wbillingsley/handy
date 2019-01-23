@@ -16,6 +16,14 @@ class ConcatProcessor[T](pubs:Publisher[Publisher[T]])(implicit ec:ExecutionCont
   var inbound:Option[Subscription] = None
   var outbound:Option[DCSubscription[T]] = None
 
+  // We hold a Future to indicate that the last stream has completed.
+  private var last:Future[Unit] = Future.successful(())
+
+  // Enqueues a function on the Future chain.
+  private def enqueue(f: => Future[Unit]) = synchronized {
+    last = last.flatMap(_ => f)
+  }
+
   override def subscribe(s: Subscriber[_ >: T]): Unit = {
     var firstSub = true
     synchronized {
@@ -46,10 +54,16 @@ class ConcatProcessor[T](pubs:Publisher[Publisher[T]])(implicit ec:ExecutionCont
   }
 
   override def onComplete(): Unit = synchronized {
-    inbound = None
+    enqueue {
+      for { s <- outbound } s.pushComplete()
+      Future.successful(())
+    }
   }
 
-  override def onNext(pub: Publisher[T]): Unit = {
+  override def onNext(pub: Publisher[T]): Unit = enqueue {
+
+    val done = Promise[Unit]
+
     pub.subscribe(new Subscriber[T] {
       var os:Option[Subscription] = None
 
@@ -63,10 +77,8 @@ class ConcatProcessor[T](pubs:Publisher[Publisher[T]])(implicit ec:ExecutionCont
       }
 
       override def onComplete(): Unit = {
-        inbound match {
-          case Some(i) => i.request(1)
-          case None => for { s <- outbound } s.pushComplete()
-        }
+        for { i <- inbound } i.request(1)
+        done.success(())
       }
 
       override def onNext(t: T): Unit = {
@@ -76,6 +88,8 @@ class ConcatProcessor[T](pubs:Publisher[Publisher[T]])(implicit ec:ExecutionCont
         }
       }
     })
+
+    done.future
   }
 
 }

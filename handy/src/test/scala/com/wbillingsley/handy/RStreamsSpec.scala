@@ -119,25 +119,6 @@ class RStreamsSpec(implicit ee: ExecutionEnv) extends Specification {
       ProcessorFuncs.collect(mapped).toFuture must be_==((0 until 100).map(_ * 2)).await
     }
 
-
-    "concat async 2" in {
-
-      // Create a Publisher of completed Futures
-      def stream(x:Int) = new RMPublisher({
-        val nums = RefTraversableOnce(0 until x)
-        nums.flatMapOne[Int](_ => RefFuture(Future.apply(x)))
-      })
-
-      // Create a Publisher of a RefMany that is backed by a Range.
-      def streamSync(x:Int) = new RMPublisher(RefTraversableOnce(0 until x))
-
-      val mapped:Publisher[Publisher[Int]] = streamSync(3).map({ _ => stream(10) })
-      val cc = new ConcatProcessor[Int](mapped)
-
-      ProcessorFuncs.collect(cc).toFuture must be_==((3 until 33)).await
-    }
-
-
     "concatenate RefMany publishers" in {
       val i = 50
       val j = 50
@@ -179,7 +160,7 @@ class RStreamsSpec(implicit ee: ExecutionEnv) extends Specification {
 
       ass.completeThePromises()
 
-      result.foldLeft(0)(_ + _).toFuture must be_==((0 until 400).sum).await
+      result.foldLeft(0)(_ + _).toFuture must be_==((0 until 400).sum).awaitFor(10.seconds)
     }
 
   }

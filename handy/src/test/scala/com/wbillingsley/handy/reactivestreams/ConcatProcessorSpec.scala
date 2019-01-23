@@ -55,6 +55,27 @@ class ConcatProcessorSpec(implicit ee: ExecutionEnv) extends Specification {
             result must be_==((0 until 100).toSeq).await
 
         }
+
+        "flatten a Publisher of Publishers that has been produced by MapR" in new WithAkka {
+
+            // Create a Publisher of completed Futures
+            def stream(x:Int) = new RMPublisher({
+                val nums = RefTraversableOnce(0 until x)
+                nums.flatMapOne[Int](i => RefFuture(Future.successful(i)))
+            })
+
+            // Create a Publisher of a RefMany that is backed by a Range.
+            def streamSync(x:Int) = new RMPublisher(RefTraversableOnce(0 until x))
+
+            val mapped:Publisher[Publisher[Int]] = streamSync(3).map({ _ => stream(10) })
+            val cc = new ConcatProcessor[Int](mapped)
+
+            val mappedSource = Source.fromPublisher(cc)
+            val received = mappedSource.runWith(Sink.seq)
+
+            received.map(_.sum) must be_==((0 until 10).sum * 3).await
+        }
+            
     }
 
 }
