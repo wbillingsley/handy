@@ -149,8 +149,8 @@ object Perm {
 
     def apply(id:Id[T,K])(implicit lu:LookUp[T, K]):Ref[Perm[U]] = new POI(id, id.lookUp(lu))
 
-    def apply(oid:Option[Id[T,K]])(implicit lu:LookUp[T, K]):Ref[Perm[U]] = {
-      apply(oid.lookUp)
+    def apply(oid:Option[Id[T,K]])(implicit lu:LookUp[T, K]):RefOpt[Perm[U]] = {
+      RefOpt(oid).flatMap(apply)
     }
   }
 
