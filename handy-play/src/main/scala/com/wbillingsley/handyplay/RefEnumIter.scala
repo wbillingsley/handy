@@ -24,7 +24,8 @@ class RefEnumIter[T](val enumerator:Enumerator[Iterator[T]])(implicit val execut
   
   /** 
    * If you're using a non-blocking framework, you probably don't want to call this one!
-   */
+   *
+   @Deprecated
   def fetch = {
     
     import scala.collection.mutable
@@ -36,10 +37,10 @@ class RefEnumIter[T](val enumerator:Enumerator[Iterator[T]])(implicit val execut
       new RefTraversableOnce(r)
     } catch {
       case x:Throwable => 
-        RefFailed(x)
+        RefManyFailed(x)
     }
     
-  }
+  }*/
   
   def foreach[U](f: (T) => U) {
     val iteratee = Iteratee.foreach[Iterator[T]](i => i.foreach(f))
@@ -56,6 +57,16 @@ class RefEnumIter[T](val enumerator:Enumerator[Iterator[T]])(implicit val execut
     new RefEnumerator(enum2)
   }
 
+  override def flatMapOpt[B](f: T => RefOpt[B]) = {   
+    import RefConversions._
+    
+    val enum2 = enumerator &> Enumeratee.mapFlatten { iterator => 
+      val inner = enumerateIterator(iterator)
+      inner &> Enumeratee.mapFlatten(el => f(el).enumerate)
+    }
+    new RefEnumerator(enum2)
+  }   
+
   def flatMapMany[B](f: T => RefMany[B]) = {
     import RefConversions._
     
@@ -69,44 +80,24 @@ class RefEnumIter[T](val enumerator:Enumerator[Iterator[T]])(implicit val execut
   def map[B](f: (T) => B) = new RefEnumIter(enumerator.map(i => i.map(f)))
   
   def isTraversableAgain = false
-  
-  def toIterator = fetch.toIterator
-  
-  def toStream = fetch.toStream
-  
-  def copyToArray[B >: T](xs:Array[B], start:Int, len:Int) { 
-    fetch.copyToArray(xs, start, len) 
-  }
-  
-  def exists(p: T => Boolean) = fetch.exists(p)
-  
-  def find(p: T => Boolean) = fetch.find(p)
-  
-  def forall(p: T => Boolean) = fetch.forall(p)
-  
-  def hasDefiniteSize = fetch.hasDefiniteSize
-  
-  def seq = fetch.seq
-  
-  def toTraversable = fetch.toTraversable   
-  
-  def isEmpty = fetch.isEmpty  
-  
+    
   def withFilter(p: T => Boolean) = {
     new RefEnumIter(enumerator &> Enumeratee.map(i => i.filter(p)))
   }
 
-  def first: com.wbillingsley.handy.Ref[T] = {
+  override def first: com.wbillingsley.handy.RefOpt[T] = {
     import RefConversions._
+    import Ref._
     
     val enum2 = enumerator &> Enumeratee.mapFlatten { iterator => 
       enumerateIterator(iterator)
     }
-    new RefFutureOption(enum2 |>>> Iteratee.head)
+    
+    (enum2 |>>> Iteratee.head).toRefOpt
     
   }
   
-  def fold[B](initial: => B)(each: (B, T) => B): com.wbillingsley.handy.Ref[B] = {
+  def foldLeft[B](initial: => B)(each: (B, T) => B): com.wbillingsley.handy.Ref[B] = {
     val enum2 = enumerator &> Enumeratee.mapFlatten { iterator => 
       enumerateIterator(iterator)
     }

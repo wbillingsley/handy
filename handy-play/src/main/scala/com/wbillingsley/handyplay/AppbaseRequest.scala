@@ -3,10 +3,11 @@ package com.wbillingsley.handyplay
 import java.util.NoSuchElementException
 import play.api.libs.json.Json
 import play.api.mvc._
-import com.wbillingsley.handy.{Ref, Approval}
+import com.wbillingsley.handy.{Ref, RefSome, RefOpt, Approval}
 import Ref._
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
+import scala.language.implicitConversions
 
 case class Appbase[U](
   ufr:UserFromRequest[U],
@@ -28,9 +29,7 @@ case class Appbase[U](
     def newSessionKey = java.util.UUID.randomUUID.toString
   }
 
-  object UserAction extends ActionBuilder[AppbaseRequest] with ActionTransformer[Request, AppbaseRequest] {
-
-    import play.api.libs.concurrent.Execution.Implicits._
+  class UserAction(val parser: BodyParser[AnyContent])(implicit val executionContext: ExecutionContext) extends ActionBuilder[AppbaseRequest, AnyContent] with ActionTransformer[Request, AppbaseRequest] {
 
     def transform[A](request: Request[A]) = Future.successful {
       new AppbaseRequest(request)
@@ -52,7 +51,14 @@ case class Appbase[U](
 
     implicit def rtf(rr:Ref[Result]):Future[Result] = {
       rr
-        .orIfNone(Results.NotFound(Json.obj("error" -> "Not found")).itself)
+        .toFuture
+        .recoverWith(errorPF)
+    }
+
+    implicit def rotf(rr:RefOpt[Result]):Future[Result] = {
+      rr
+        .orElse(RefSome(Results.NotFound(Json.obj("error" -> "Not found"))))
+        .require        
         .toFuture
         .recoverWith(errorPF)
     }

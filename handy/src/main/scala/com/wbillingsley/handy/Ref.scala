@@ -100,6 +100,10 @@ object Ref {
     def toRef(implicit ec:ExecutionContext) = new RefFuture(underlying)(ec)
   }
 
+  implicit class futOptToRefOpt[T](val underlying: Future[Option[T]]) extends AnyVal {
+    def toRefOpt(implicit ec:ExecutionContext) = RefOpt.fromFutureOpt(underlying)(ec)
+  }
+
   implicit class optToRef[T](val underlying: Option[T]) extends AnyVal {
 	  def toRef:RefOpt[T] = RefOpt.apply(underlying)
   }

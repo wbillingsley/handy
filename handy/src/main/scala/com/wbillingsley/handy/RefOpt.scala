@@ -55,10 +55,15 @@ trait RefOpt[+T] extends RSuper[T] {
 }
 
 object RefOpt {
+  import scala.concurrent.{ExecutionContext, Future}
 
   def apply[T](opt:Option[T]):RefOptSync[T] = opt match {
     case Some(v) => RefSome(v)
     case None => RefNone
+  }
+
+  def fromFutureOpt[T](fo:Future[Option[T]])(implicit ec:ExecutionContext):RefOpt[T] = {
+    new RefFuture(fo)(ec).flatMap(RefOpt.apply)
   }
 
   def none:RefOpt[Nothing] = RefNone

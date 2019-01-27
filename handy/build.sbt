@@ -19,3 +19,4 @@ pomExtra in ThisBuild := (
 libraryDependencies += "junit" % "junit" % "4.7" % "test"
 
 libraryDependencies += "com.novocode" % "junit-interface" % "0.7" % "test"
+libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.5.19" % "test"

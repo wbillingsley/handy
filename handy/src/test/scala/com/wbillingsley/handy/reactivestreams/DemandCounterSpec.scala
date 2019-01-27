@@ -36,7 +36,7 @@ class DemandCounterSpec(implicit ee: ExecutionEnv) extends Specification {
             
             sends.collect.map({ case seq =>
               seq.foldLeft((true, -1, 0)) { case ((ordered, x, count), y) => (ordered && y > x, y, count + 1) }                
-            }).toFuture must be_===((true, num, seq.length)).await
+            }).toFuture must be_===((true, num, seq.length)).awaitFor(5.seconds)
         }
 
     }

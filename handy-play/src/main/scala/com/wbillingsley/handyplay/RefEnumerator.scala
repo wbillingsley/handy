@@ -14,7 +14,7 @@ class RefEnumerator[T](val enumerator:Enumerator[T])(implicit val executionConte
   
   /** 
    * If you're using a non-blocking framework, you probably don't want to call this one!
-   */
+   *
   def fetch = {
     import scala.collection.mutable
     
@@ -28,7 +28,7 @@ class RefEnumerator[T](val enumerator:Enumerator[T])(implicit val executionConte
         RefFailed(x)
     }
     
-  }
+  }*/
   
   def foreach[U](f: (T) => U) {
     val iteratee = Iteratee.foreach[T](f(_))
@@ -40,6 +40,12 @@ class RefEnumerator[T](val enumerator:Enumerator[T])(implicit val executionConte
     val enum2 = enumerator.flatMap(f(_).enumerate)
     new RefEnumerator(enum2)
   }
+
+  override def flatMapOpt[B](f: T => RefOpt[B]) = {   
+    import RefConversions._
+    val enum2 = enumerator.flatMap(f(_).enumerate)
+    new RefEnumerator(enum2)
+  }  
   
   def flatMapMany[B](f: T => RefMany[B]) = {   
     import RefConversions._
@@ -51,39 +57,19 @@ class RefEnumerator[T](val enumerator:Enumerator[T])(implicit val executionConte
   
   def isTraversableAgain = false
   
-  def toIterator = fetch.toIterator
-  
-  def toStream = fetch.toStream
-  
-  def copyToArray[B >: T](xs:Array[B], start:Int, len:Int) { 
-    fetch.copyToArray(xs, start, len) 
-  }
-  
-  def exists(p: T => Boolean) = fetch.exists(p)
-  
-  def find(p: T => Boolean) = fetch.find(p)
-  
-  def forall(p: T => Boolean) = fetch.forall(p)
-  
-  def hasDefiniteSize = fetch.hasDefiniteSize
-  
-  def seq = fetch.seq
-  
-  def toTraversable = fetch.toTraversable   
-  
-  def isEmpty = fetch.isEmpty  
-  
   def withFilter(p: T => Boolean) = {
     new RefEnumerator(enumerator &> Enumeratee.filter(p))
   }
 
-  def first: com.wbillingsley.handy.Ref[T] = {
+  override def first: com.wbillingsley.handy.RefOpt[T] = {
+    import Ref._
+
     val iter = Iteratee.head[T]
     val r = enumerator |>>> iter
-    new RefFutureOption(r)    
+    r.toRefOpt    
   }
   
-  def fold[B](initial: => B)(each: (B, T) => B): com.wbillingsley.handy.Ref[B] = {
+  def foldLeft[B](initial: => B)(each: (B, T) => B): com.wbillingsley.handy.Ref[B] = {
     val iter = Iteratee.fold(initial)(each)
     new RefFuture(enumerator |>>> iter)
   }

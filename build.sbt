@@ -93,7 +93,7 @@ lazy val handyuser = (project in file("handy-user"))
 
 lazy val aggregate = (project in file("."))
   .aggregate(
-    handyJvm, handyJs
+    handyJvm, handyJs, handyplay, handyappbaseJvm, handyappbaseJs
   )
   .settings(commonSettings:_*)
   .settings(

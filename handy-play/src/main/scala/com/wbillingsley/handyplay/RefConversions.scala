@@ -15,8 +15,8 @@ object RefConversions {
 
       case _ => new Enumerator[T] {
         def apply[A](it: Iteratee[T, A]) = {
-          val res = rm.fold(it) { (it, el) => Iteratee.flatten(it.feed(Input.El(el))) }
-          res.toFutOpt.map(_.getOrElse(it))(executionContext)
+          val res = rm.foldLeft(it) { (it, el) => Iteratee.flatten(it.feed(Input.El(el))) }
+          res.toRefOpt.toFutureOpt.map(_.getOrElse(it))(executionContext)
         }
       }
     }
@@ -32,12 +32,25 @@ object RefConversions {
     }
   }
   
+  implicit class EnumerateRefOpt[T](val r:RefOpt[T]) {
+
+    def enumerate(implicit executionContext:ExecutionContext):Enumerator[T] = {
+      val futureEnum = for {
+        opt <- r.toFutureOpt
+      } yield opt match {
+        case Some(item) => Enumerator[T](item)
+        case None => Enumerator.empty[T]
+      }
+      Enumerator.flatten(futureEnum)
+    }
+
+  }
   
   implicit class EnumerateRef[T](val r:Ref[T]) {
 
     def enumerate(implicit executionContext:ExecutionContext):Enumerator[T] = {
       val futureEnum = for {
-        opt <- r.toFutOpt
+        opt <- r.toRefOpt.toFutureOpt
       } yield opt match {
         case Some(item) => Enumerator[T](item)
         case None => Enumerator.empty[T]
