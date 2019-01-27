@@ -45,6 +45,10 @@ trait RefOpt[+T] extends RSuper[T] {
   /** If the RefOpt evaluates to not containing a value, f will be produced instead */
   def orElse[B >: T](f: => RefOpt[B]):RefOpt[B]
 
+  def orElse[B >: T](f: => Ref[B]):Ref[B] = orElse(f.toRefOpt).require
+
+  def orFail(f: => Throwable) = orElse(RefFailed(f))
+
   def option:Ref[Option[T]]
 
   /** For recovery from failures */
