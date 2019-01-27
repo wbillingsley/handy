@@ -1,6 +1,6 @@
 package com.wbillingsley.handy.user
 
-import com.wbillingsley.handy.Ref
+import com.wbillingsley.handy.{Ref, RefOpt}
 import com.wbillingsley.handy.appbase.{ActiveSession, PasswordLogin}
 import org.mindrot.jbcrypt.BCrypt
 
@@ -14,12 +14,12 @@ trait UserDAO[U, I] {
   /**
    * Get the user by their current session identifier
    */
-  def bySessionKey(sessionKey:String):Ref[U]
+  def bySessionKey(sessionKey:String):RefOpt[U]
 
   /**
    * By a social login, or other identifier in another service
    */
-  def byIdentity(identity:I):Ref[U]
+  def byIdentity(identity:I):RefOpt[U]
 
   /**
    * Push a new session into the user's sessions.
