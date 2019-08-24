@@ -3,9 +3,9 @@
 lazy val commonSettings = Seq(
   organization := "com.wbillingsley",
   version := "0.9.0-SNAPSHOT",
-  scalaVersion := "2.12.6",
+  scalaVersion := "2.12.8",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature"),
-  crossScalaVersions := Seq("2.11.7", "2.12.6"),
+  crossScalaVersions := Seq("2.11.7", "2.12.8"),
   licenses := Seq("MIT" -> url("http://www.opensource.org/licenses/mit-license.php")),
   homepage := Some(url("http://github.com/wbillingsley/handy")),
   publishMavenStyle := true,
@@ -93,7 +93,7 @@ lazy val handyuser = (project in file("handy-user"))
 
 lazy val aggregate = (project in file("."))
   .aggregate(
-    handyJvm, handyJs, handyplay, handyappbaseJvm, handyappbaseJs
+    handyJvm, handyJs, handyplay, handyappbaseJvm, handyappbaseJs, handyuser
   )
   .settings(commonSettings:_*)
   .settings(
