@@ -1,4 +1,5 @@
-
+// shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
+import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 lazy val commonSettings = Seq(
   organization := "com.wbillingsley",
@@ -37,7 +38,7 @@ pomExtra in ThisBuild := (
 
 
 
-lazy val handy = (crossProject.crossType(CrossType.Pure) in file("handy"))
+lazy val handy = (crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Pure) in file("handy"))
   .settings(commonSettings:_*)
   .settings(
     name := "handy",
@@ -73,7 +74,7 @@ lazy val handymongodbasync = (project in file("handy-mongodb-async"))
 
 
 
-lazy val handyappbase = (crossProject.crossType(CrossType.Pure) in file("handy-appbase-core"))
+lazy val handyappbase = (crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Pure) in file("handy-appbase-core"))
   .dependsOn(handy)
   .settings(commonSettings:_*)
   .settings(
