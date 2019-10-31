@@ -57,7 +57,7 @@ trait RefMany[+T] extends RSuper[T] {
     foldLeft(mutable.Buffer.empty[T]) {
       (buf, item) => buf.append(item)
       buf
-    }
+    }.map(_.toSeq)
   }
 
 }

@@ -54,8 +54,7 @@ object ProcessorFuncs {
       }
 
       override def onComplete(): Unit = {
-        println("received complete")
-        if (!p.isCompleted) p.success(b)
+        if (!p.isCompleted) p.success(b.toSeq)
       }
 
       override def onNext(t: T): Unit = {

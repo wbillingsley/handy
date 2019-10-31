@@ -36,7 +36,7 @@ object Id {
     }
 
     def lazily[TT >: T](implicit lu: LookUp[TT,K]):RefOpt[TT] = {
-      RefOpt(o).flatMap(_.lazily(lu))      
+      RefOpt(o).flatMapOne(_.lazily(lu))
     }
   }
 }
