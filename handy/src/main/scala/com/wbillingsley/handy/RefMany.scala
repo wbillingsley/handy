@@ -70,6 +70,10 @@ trait RefManySync[+T] extends RefMany[T] {
 
 object RefMany {
 
+  implicit object FMOne
+  implicit object FMOpt
+  implicit object FMMany
+
   /**
    * FlatMap from many to many returns a RefMany.
    */

@@ -128,6 +128,15 @@ object Ref {
     case Failure(f) => RefFailed(f)
   }
 
+  /*
+   * These wire flatMap to the correct version by overloading.
+   * Function[T,R] gets type-erased, so we have to compel the compiler to put a different object with a different type
+   * into the second argument list in order to ensure that flatMap overloads correctly.
+   */
+  implicit object FMOne
+  implicit object FMOpt
+  implicit object FMMany
+
 }
 
 
@@ -156,9 +165,24 @@ trait Ref[+T] extends RSuper[T] {
 
   def flatMapOne[B](func: T => Ref[B]):Ref[B]
 
+  /**
+    * Allows use in for comprehensions. Automatically routes to flatMapOne (bind)
+    */
+  def flatMap[B](func: T => Ref[B])(implicit ev:Ref.FMOne.type):Ref[B] = flatMapOne(func)
+
   def flatMapOpt[B](func: T => RefOpt[B]):RefOpt[B]
 
-  def flatMapMany[B](func: T => RefMany[B]):RefMany[B] 
+  /**
+    * Allows use in for comprehensions. Automatically routes to flatMapOpt
+    */
+  def flatMap[B](func: T => RefOpt[B])(implicit ev:Ref.FMOpt.type):RefOpt[B] = flatMapOpt(func)
+
+  def flatMapMany[B](func: T => RefMany[B]):RefMany[B]
+
+  /**
+    * Allows use in for comprehensions. Automatically routes to flatMapMany
+    */
+  def flatMap[B](func: T => RefMany[B])(implicit ev:Ref.FMMany.type):RefMany[B] = flatMapMany(func)
 
   def recoverWith[B >: T](pf: PartialFunction[Throwable, Ref[B]]):Ref[B]
   

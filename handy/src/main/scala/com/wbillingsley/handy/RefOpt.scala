@@ -33,11 +33,17 @@ trait RefOpt[+T] extends RSuper[T] {
   /** Allows for comprehensions involving Ref[T] */
   def flatMapOne[B](func: T => Ref[B]):RefOpt[B]
 
+  def flatMap[B](func: T => Ref[B])(implicit ev: RefOpt.FMOne.type):RefOpt[B] = flatMapOne(func)
+
   /** Also known as bind */
   def flatMapOpt[B](func: T => RefOpt[B]):RefOpt[B]
 
+  def flatMap[B](func: T => RefOpt[B])(implicit ev: RefOpt.FMOpt.type):RefOpt[B] = flatMapOpt(func)
+
   /** Allows for comprehensions involving RefMany[T] */
   def flatMapMany[B](func: T => RefMany[B]):RefMany[B]
+
+  def flatMap[B](func: T => RefMany[B])(implicit ev: RefOpt.FMMany.type):RefMany[B] = flatMapMany(func)
 
   /** Convert to Scala library types */
   def toFutureOpt:Future[Option[T]]
@@ -102,6 +108,10 @@ object RefOpt {
       from.flatMapMany(f)
     }
   }
+
+  implicit object FMOne
+  implicit object FMOpt
+  implicit object FMMany
 
 }
 
