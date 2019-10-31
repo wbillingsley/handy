@@ -27,7 +27,7 @@ object Run {
     def testProcessor() = {
       import RefMany._
 
-      val nums = RefTraversableOnce(range).flatMapOne[Int](i => RefFuture(Future.apply(i)))
+      val nums = RefIterableOnce(range).flatMapOne[Int](i => RefFuture(Future.apply(i)))
 
       // Now double-wrap the nums to force it to use streaming
       val processor = new RMPublisher(nums)

@@ -54,7 +54,7 @@ class DAOSpec extends Specification {
     "Retrieve more than 101 items by manual fiddling" in {
       def savem = for {
         dropped <- FuturifySRC.void(ThingDAO.coll.withWriteConcern(WriteConcern.FSYNCED).drop).toRef
-        i <- new RefTraversableOnce((1 to 200).toSeq)
+        i <- new RefIterableOnce((1 to 200).toSeq)
         t1 = Thing(Id(ThingDAO.allocateId), "Number " + i)
         saved <- ThingDAO.saveSafe(t1)
       } yield saved
@@ -110,7 +110,7 @@ class DAOSpec extends Specification {
     "Retrieve more than 101 items using findMany" in {
       def savem = for {
         dropped <- FuturifySRC.void(ThingDAO.coll.withWriteConcern(WriteConcern.FSYNCED).drop).toRef
-        i <- new RefTraversableOnce((1 to 200).toSeq)
+        i <- new RefIterableOnce((1 to 200).toSeq)
         t1 = Thing(Id(ThingDAO.allocateId), "Number " + i)
         saved <- ThingDAO.saveSafe(t1)
       } yield saved

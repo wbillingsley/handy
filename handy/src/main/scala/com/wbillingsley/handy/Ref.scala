@@ -93,7 +93,7 @@ object Ref {
    * (as both a conversion to Ref and a conversion to MonadOps could provide flatMap)
    */
   implicit class travToRef[T, C[TT] <: TraversableOnce[TT]](val underlying: C[T]) extends AnyVal {
-	  def toRefMany = RefTraversableOnce(underlying)
+	  def toRefMany = RefIterableOnce(underlying)
   }
 
   implicit class futToRef[T](val underlying: Future[T]) extends AnyVal {

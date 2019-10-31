@@ -15,7 +15,7 @@ import org.specs2.mutable._
 
 
 
-class RefTraversableOnceSpec(implicit ee: ExecutionEnv) extends Specification {
+class RefIterableOnceSpec(implicit ee: ExecutionEnv) extends Specification {
   
   "RefTraversableOnce" should {
 

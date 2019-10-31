@@ -123,7 +123,7 @@ class DAO[DataT <: HasStringId[DataT]] (
      */
     val reordered = for (
       map <- new RefFuture(futIdMap);
-      id <- new RefTraversableOnce(ids);
+      id <- new RefIterableOnce(ids);
       item <- Ref(map.get(id))
     ) yield item
 

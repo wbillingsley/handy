@@ -23,7 +23,7 @@ class RMPublisherSpec(implicit ee: ExecutionEnv) extends Specification {
         "publish a simple sequence" in new WithAkka {
             // Start with a simple RefMany
             val range = (0 until 100)
-            val rm = new RefTraversableOnce(range)
+            val rm = new RefIterableOnce(range)
 
             // publish it
             val publisher = new RMPublisher(rm)
@@ -42,7 +42,7 @@ class RMPublisherSpec(implicit ee: ExecutionEnv) extends Specification {
         "publish a RefMany of already-completed Futures" in new WithAkka {
             // Create a Publisher of completed Futures
             def stream(x:Int) = new RMPublisher({
-                val nums = RefTraversableOnce(0 until x)
+                val nums = RefIterableOnce(0 until x)
                 nums.flatMapOne[Int](i => RefFuture(Future.apply(i)))
             })
 

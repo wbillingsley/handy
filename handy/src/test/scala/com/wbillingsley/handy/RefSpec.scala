@@ -59,7 +59,7 @@ class RefSpec(implicit ee: ExecutionEnv) extends Specification {
 
     "support flatMap redirection OneToMany" in {
       def x(i:Int):Ref[Int] = RefItself(i)
-      def xm(i:Int):RefMany[Int] = RefTraversableOnce(Seq.fill(i)(i))
+      def xm(i:Int):RefMany[Int] = RefIterableOnce(Seq.fill(i)(i))
 
       x(1) flatMap xm must be_==(xm(1))
     }

@@ -119,7 +119,7 @@ class RStreamsSpec(implicit ee: ExecutionEnv) extends Specification {
       val j = 50
 
       def stream(x:Int) = new RMPublisher({
-        val nums = RefTraversableOnce(0 until x)
+        val nums = RefIterableOnce(0 until x)
         nums.flatMapOne[Int](i => RefFuture(Future.apply(i)))
       })
 
