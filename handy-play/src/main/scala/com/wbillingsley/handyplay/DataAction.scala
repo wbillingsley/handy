@@ -1,18 +1,7 @@
 package com.wbillingsley.handyplay
 
-import akka.util.ByteString
-import play.api.Logger
-import play.api.libs.streams.Accumulator
-import play.api.mvc.{EssentialAction, Request, RequestHeader, AnyContent, AcceptExtractors, BodyParser, BodyParsers, Action, Result, Results}
-
 import com.wbillingsley.handy._
-import Ref._
-import com.wbillingsley.handyplay.JsonConverter._
-import com.wbillingsley.handyplay.RefConversions._
-import play.api.libs.iteratee._
-import scala.concurrent.{Future, Promise}
-import play.api.libs.json.{ JsValue, Json }
-import play.api.libs.concurrent.Execution.Implicits._
+import play.api.mvc.{Action, EssentialAction, Results}
 
 import scala.language.implicitConversions
 

@@ -92,7 +92,7 @@ object Ref {
    * compiler error with an ambiguous conversion for some collections with flatMap
    * (as both a conversion to Ref and a conversion to MonadOps could provide flatMap)
    */
-  implicit class travToRef[T, C[TT] <: TraversableOnce[TT]](val underlying: C[T]) extends AnyVal {
+  implicit class travToRef[T, C[TT] <: IterableOnce[TT]](val underlying: C[T]) extends AnyVal {
 	  def toRefMany = RefIterableOnce(underlying)
   }
 

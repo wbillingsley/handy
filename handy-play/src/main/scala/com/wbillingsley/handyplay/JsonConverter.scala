@@ -2,7 +2,6 @@ package com.wbillingsley.handyplay
 
 import com.wbillingsley.handy._
 import play.api.libs.json._
-import play.api.libs.iteratee.Enumerator
 
 import scala.concurrent.ExecutionContext
 
@@ -30,34 +29,6 @@ object JsonConverter {
     
     def toJson = jc.toJson(item)
   }    
-  
-  /** 
-   * Useful for putting the commas in the right place when Enumerating JSON as a string
-   */
-  implicit class StringifyJson(val en: Enumerator[JsObject]) extends AnyVal {
-    def stringify(implicit ec:ExecutionContext) = {
-      var sep = ""
-      for (j <- en) yield {
-        val s = sep + j.toString
-        sep = ","
-        s
-      }
-    }
-  }  
 
-  /** 
-   * Useful for putting the commas in the right place when Enumerating JSON as a string.
-   * We have both this and StringifyJson because Enumerator[T] is invariant on T
-   */
-  implicit class StringifyJsValue[J <: JsValue](val en: Enumerator[J]) extends AnyVal {
-    def stringify(implicit ec:ExecutionContext) = {
-      var sep = ""
-      for (j <- en) yield {
-        val s = sep + j.toString
-        sep = ","
-        s
-      }
-    }
-  }    
-    
+
 }
