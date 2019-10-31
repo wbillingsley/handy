@@ -20,7 +20,7 @@ case class RefItself[T](val item: T) extends RefSync[T] {
 
   override def flatMapMany[B](f: T => RefMany[B]):RefMany[B] = f(item)
 
-  override def foreach[U](f: T => U) { f(item) }
+  override def foreach[U](f: T => U):Unit = { f(item) }
 
   override def recoverWith[B >: T](pf: PartialFunction[Throwable, Ref[B]]) = this
 

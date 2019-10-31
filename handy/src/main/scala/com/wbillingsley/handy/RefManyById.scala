@@ -25,7 +25,7 @@ case class RefManyById[T, K](rawIds: Seq[K], lu:LookUp[T, K]) extends RefMany[T]
 
   def flatMapOne[B](f: T => Ref[B]) = lookUp.flatMapOne(f)
   
-  def foreach[U](f: T => U) { lookUp.foreach(f) }
+  def foreach[U](f: T => U):Unit = { lookUp.foreach(f) }
   
   def withFilter(p: T => Boolean) = lookUp withFilter p
   

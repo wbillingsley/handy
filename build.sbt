@@ -3,15 +3,15 @@ import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 lazy val commonSettings = Seq(
   organization := "com.wbillingsley",
-  version := "0.9.0-SNAPSHOT",
-  scalaVersion := "2.12.8",
+  version := "0.10.0-SNAPSHOT",
+  scalaVersion := "2.13.1",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature"),
-  crossScalaVersions := Seq("2.11.7", "2.12.8"),
+  crossScalaVersions := Seq("2.11.7", "2.12.8", "2.13.1"),
   licenses := Seq("MIT" -> url("http://www.opensource.org/licenses/mit-license.php")),
   homepage := Some(url("http://github.com/wbillingsley/handy")),
   publishMavenStyle := true,
   libraryDependencies ++= Seq(
-    "org.specs2" %% "specs2-core" % "4.3.4" % "test",
+    "org.specs2" %% "specs2-core" % "4.6.0" % "test",
     "junit" % "junit" % "4.7" % "test"
   )
 )
@@ -44,8 +44,8 @@ lazy val handy = (crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Pure
     name := "handy",
 
     libraryDependencies += "org.reactivestreams" % "reactive-streams" % "1.0.0",
-    libraryDependencies += "com.typesafe.akka" %% "akka-stream" % "2.5.19" % "test",
-    libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.5.19" % "test" 
+    libraryDependencies += "com.typesafe.akka" %% "akka-stream" % "2.5.26" % "test",
+    libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.5.26" % "test"
   )
 
 lazy val handyJvm = handy.jvm

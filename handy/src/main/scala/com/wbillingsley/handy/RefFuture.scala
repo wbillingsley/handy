@@ -18,7 +18,7 @@ case class RefFuture[+T](future: Future[T])(implicit val executionContext:Execut
    */
   override def immediateId[K](implicit g:GetsId[T, K]):None.type = None
 
-  def foreach[U](f: (T) => U) {
+  def foreach[U](f: (T) => U):Unit = {
     future.foreach(f)
   }
 
@@ -55,7 +55,7 @@ case class RefFutureRef[+T](futureRef: Future[Ref[T]])(implicit val executionCon
    */
   override def immediateId[K](implicit g:GetsId[T, K]):None.type = None
 
-  override def foreach[U](f: (T) => U) {
+  override def foreach[U](f: (T) => U):Unit = {
     futureRef.foreach(_.foreach(f))
   }  
 
@@ -88,7 +88,7 @@ case class RefFutureRef[+T](futureRef: Future[Ref[T]])(implicit val executionCon
 
 case class RefFutureRefMany[+T](futureRef: Future[RefMany[T]])(implicit val executionContext:ExecutionContext = RefFuture.executionContext) extends RefMany[T] {
   
-  override def foreach[U](f: T => U) {
+  override def foreach[U](f: T => U):Unit = {
     futureRef.foreach(_.foreach(f))
   }  
   

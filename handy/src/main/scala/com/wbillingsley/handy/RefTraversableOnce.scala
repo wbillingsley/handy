@@ -25,7 +25,7 @@ case class RefTraversableOnce[T, C[TT] <: TraversableOnce[TT]](items: C[T]) exte
 
   override def flatMapOne[B](f: T => Ref[B]) = RefTraversableRef(items map f)
 
-  override def foreach[U](f: T => U) { items.foreach(f) }
+  override def foreach[U](f: T => U):Unit = { items.foreach(f) }
 
   override def recoverManyWith[B >: T](pf: PartialFunction[Throwable, RefMany[B]]):RefMany[B] = this
 
@@ -64,7 +64,7 @@ case class RefTraversableRef[T, C[TT] <: TraversableOnce[TT]](refs: TraversableO
     RefTraversableRefMany(result)
   }
 
-  override def foreach[U](f: T => U) { refs.foreach(_.foreach(f)) }
+  override def foreach[U](f: T => U):Unit = { refs.foreach(_.foreach(f)) }
   
   override def withFilter(p: T => Boolean):RefMany[T] = {
     flatMapOpt(x => if (p(x)) RefSome(x) else RefNone)
@@ -162,7 +162,7 @@ case class RefTraversableRefMany[T, C[TT] <: TraversableOnce[TT]](refs: Traversa
     RefTraversableRefMany(result)
   }
 
-  def foreach[U](f: T => U) { refs.foreach(_.foreach(f)) }
+  def foreach[U](f: T => U):Unit = { refs.foreach(_.foreach(f)) }
   
   def withFilter(p: T => Boolean) = RefTraversableRefMany(refs map (_ withFilter p))
   

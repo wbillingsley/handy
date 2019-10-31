@@ -27,7 +27,7 @@ object Id {
   case class LookUpPair[T,K](id:Id[T,K], lu:LookUp[T,K])
 
   implicit class AsId[K](val k:K) extends AnyVal {
-    def asId[T] = Id[T,K](k)
+    def asId[T]:Id[T,K] = Id[T,K](k)
   }
 
   implicit class OptLookup[+T,K](val o:Option[Id[T,K]]) extends AnyVal {

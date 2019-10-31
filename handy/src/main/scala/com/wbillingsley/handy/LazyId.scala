@@ -18,7 +18,7 @@ case class LazyId [T, K](nakedId: K, lookUpMethod:LookUpOne[T, K]) extends Ref[T
 
   override def immediateId[K](implicit g:GetsId[T, K]):Option[Id[T,K]] = g.canonical[T](nakedId)
   
-  def foreach[U](f: (T) => U) {
+  def foreach[U](f: (T) => U):Unit = {
     lookUp.foreach(f)
   }
   
