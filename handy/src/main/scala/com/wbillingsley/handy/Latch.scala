@@ -179,9 +179,9 @@ object Latch {
     * Creates a Latch that already has a value
     */
   def immediate[T](op: T)(implicit ec:ExecutionContext):Latch[T] = {
-    val p = Promise[T]()
-    p.success(op)
-    Latch.lazily(p.future)
+    val l = Latch.lazily(Future.successful(op))
+    l.request // trigger the latch to cache the value
+    l
   }
 
   /**
