@@ -38,7 +38,7 @@ class LookUpCacheSpec(implicit ee: ExecutionEnv) extends Specification {
       assignable must be_==(true)
       
       // Even though the class on the RefById is to the superclass, it should still find it
-      cache(LazyId(1).of[Page]) must be_===(p1itself)
+      cache(LazyId(1).of[Page]) must be_==(p1itself)
     }     
     
   }
