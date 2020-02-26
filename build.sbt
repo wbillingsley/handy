@@ -19,7 +19,7 @@ lazy val commonSettings = Seq(
 // Bintray settings for publishing releases
 //seq(bintrayPublishSettings:_*)
 
-publishTo in ThisBuild := Some("Hopper snapshots" at "http://hopper.une.edu.au/artifactory/libs-snapshot-local;build.timestamp=" + new java.util.Date().getTime)
+publishTo in ThisBuild := Some("Hopper snapshots" at "https://hopper.une.edu.au/artifactory/libs-snapshot-local;build.timestamp=" + new java.util.Date().getTime)
 
 pomExtra in ThisBuild := (
   <scm>

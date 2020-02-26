@@ -1,6 +1,6 @@
 name := "handy-play"
 
-resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/"
+resolvers += "Typesafe Releases" at "https://repo.typesafe.com/typesafe/releases/"
 
 libraryDependencies += "com.typesafe.play" %% "play" % "2.7.3"
 
