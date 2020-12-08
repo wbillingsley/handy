@@ -150,7 +150,7 @@ case class RefManyFailed(throwable: Throwable) extends RefMany[Nothing] with Ref
     * Note that it does not recover from individual elements within the list failing.
     */
   override def recoverManyWith[B >: Nothing](pf: PartialFunction[Throwable, RefMany[B]]): RefMany[B] = {
-    pf.applyOrElse(throwable, { _:Throwable => this })
+    pf.applyOrElse(throwable, { (_:Throwable) => this })
   }
 
   /**

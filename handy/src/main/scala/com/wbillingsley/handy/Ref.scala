@@ -93,7 +93,7 @@ object Ref {
    * (as both a conversion to Ref and a conversion to MonadOps could provide flatMap)
    */
   implicit class travToRef[T, C[TT] <: IterableOnce[TT]](val underlying: C[T]) extends AnyVal {
-	  def toRefMany = RefIterableOnce(underlying)
+    def toRefMany = RefIterableOnce(underlying)
   }
 
   implicit class futToRef[T](val underlying: Future[T]) extends AnyVal {
@@ -105,7 +105,7 @@ object Ref {
   }
 
   implicit class optToRef[T](val underlying: Option[T]) extends AnyVal {
-	  def toRef:RefOpt[T] = RefOpt.apply(underlying)
+    def toRef:RefOpt[T] = RefOpt.apply(underlying)
   }
 
   implicit class tryToRef[T](val underlying: scala.util.Try[T]) extends AnyVal {

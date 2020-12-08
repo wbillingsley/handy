@@ -3,15 +3,14 @@ import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 lazy val commonSettings = Seq(
   organization := "com.wbillingsley",
-  version := "0.10.0-SNAPSHOT",
-  scalaVersion := "2.13.1",
+  version := "0.11.0-SNAPSHOT",
+  scalaVersion := "3.0.0-M2",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature"),
-  crossScalaVersions := Seq("2.11.7", "2.12.8", "2.13.1"),
+  crossScalaVersions := Seq("2.13.1", "3.0.0-M2"),
   licenses := Seq("MIT" -> url("http://www.opensource.org/licenses/mit-license.php")),
   homepage := Some(url("http://github.com/wbillingsley/handy")),
   publishMavenStyle := true,
   libraryDependencies ++= Seq(
-    "org.specs2" %% "specs2-core" % "4.6.0" % "test",
     "junit" % "junit" % "4.7" % "test"
   )
 )
@@ -42,15 +41,13 @@ lazy val handy = (crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Pure
   .settings(commonSettings:_*)
   .settings(
     name := "handy",
-
     libraryDependencies += "org.reactivestreams" % "reactive-streams" % "1.0.0",
-    libraryDependencies += "com.typesafe.akka" %% "akka-stream" % "2.5.26" % "test",
-    libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.5.26" % "test"
   )
 
 lazy val handyJvm = handy.jvm
 lazy val handyJs = handy.js
 
+/*
 lazy val handyplay = (project in file("handy-play"))
   .dependsOn(handyJvm)
   .settings(commonSettings:_*)
@@ -90,11 +87,11 @@ lazy val handyuser = (project in file("handy-user"))
   .settings(
     name := "handy-user"
   )
-
+*/
 
 lazy val aggregate = (project in file("."))
   .aggregate(
-    handyJvm, handyJs, handyplay, handyappbaseJvm, handyappbaseJs, handyuser
+    handyJvm, handyJs, //handyplay, handyappbaseJvm, handyappbaseJs, handyuser
   )
   .settings(commonSettings:_*)
   .settings(

@@ -150,7 +150,7 @@ object Perm {
     def apply(id:Id[T,K])(implicit lu:LookUp[T, K]):Ref[Perm[U]] = new POI(id, id.lookUp(lu))
 
     def apply(oid:Option[Id[T,K]])(implicit lu:LookUp[T, K]):RefOpt[Perm[U]] = {
-      RefOpt(oid).flatMap(apply)
+      RefOpt(oid).flatMap((x) => apply(x))
     }
   }
 
@@ -192,7 +192,7 @@ object Approval {
     /**
      * Returns a Ref[Boolean]
      */
-    def askBoolean(refPerm: Ref[Perm[U]]):Ref[Boolean] = refPerm flatMap askBoolean // calls askBoolean(Perm[U])
+    def askBoolean(refPerm: Ref[Perm[U]]):Ref[Boolean] = refPerm.flatMap({ (x) => askBoolean(x) }) // calls askBoolean(Perm[U])
   }
 
   implicit def refApproval[U](a: Approval[U]):RefItself[Approval[U]] = RefItself(a)

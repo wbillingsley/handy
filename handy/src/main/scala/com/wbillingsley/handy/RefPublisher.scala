@@ -21,7 +21,7 @@ class RefPublisher[+T](publisher:Publisher[T])(implicit val ec: ExecutionContext
   override def recoverManyWith[B >: T](pf: PartialFunction[Throwable, RefMany[B]]): RefMany[B] = this
 
   override def withFilter(func: (T) => Boolean): RefMany[T] = {
-    new RefPublisher(new MapR[T,T](publisher)({ item:T =>
+    new RefPublisher(new MapR[T,T](publisher)({ (item:T) =>
       if (func(item)) RefSome(item) else RefNone
     })(ec))
   }

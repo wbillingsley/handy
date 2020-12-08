@@ -55,12 +55,12 @@ class MapR[T, R](pub:Publisher[T])(f: T => RefOpt[R])(implicit val ec: Execution
   override def onNext(t: T): Unit = {
     for {
       s <- inbound
-      processed <- f(t).orElse[R] {
+      processed <- f(t).orElse[R]({
         // If this one has been skipped, request another
         s.request(1); RefNone
-      } recoverWith[R] {
+      }).recoverWith[R]({
         case x => onError(x); RefOptFailed(x)
-      }
+      })
       pushed <- Future.sequence(outbound.map(_.push(processed)))
     } {
       s.request(1)
