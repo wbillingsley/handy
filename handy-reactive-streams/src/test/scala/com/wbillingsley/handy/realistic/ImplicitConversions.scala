@@ -1,6 +1,7 @@
 package com.wbillingsley.handy.realistic
 
 import com.wbillingsley.handy._
+
 import scala.language.implicitConversions
 
 /*
@@ -9,8 +10,8 @@ import scala.language.implicitConversions
 
 object ImplicitResponses {
   
-  import scala.concurrent._
   import scala.concurrent.ExecutionContext.Implicits._
+  import scala.concurrent._
 
   /**
    * This is left here to give a hint as to how this is done, but I've not imported

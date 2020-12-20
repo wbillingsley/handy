@@ -1,10 +1,10 @@
 package com.wbillingsley.handy
 
-import org.specs2.mutable._
-import realistic._
-import Ref._
-import Id._
+import com.wbillingsley.handy.Id._
+import com.wbillingsley.handy.Ref._
+import com.wbillingsley.handy.realistic._
 import org.specs2.concurrent.ExecutionEnv
+import org.specs2.mutable._
 
 class PermSpec(implicit ee: ExecutionEnv) extends Specification {
 

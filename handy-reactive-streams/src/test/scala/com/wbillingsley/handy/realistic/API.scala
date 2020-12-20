@@ -1,7 +1,7 @@
 package com.wbillingsley.handy.realistic
 
+import com.wbillingsley.handy.Ref._
 import com.wbillingsley.handy._
-import Ref._
 
 /*
  * Model classes for our sample app

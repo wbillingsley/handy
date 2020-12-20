@@ -1,7 +1,7 @@
 package com.wbillingsley.handy
 
-import Ref._
-import Approval._
+import com.wbillingsley.handy.Approval._
+import com.wbillingsley.handy.Ref._
 import com.wbillingsley.handy.realistic._
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable._

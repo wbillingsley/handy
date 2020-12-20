@@ -1,16 +1,16 @@
 package com.wbillingsley.handy
 
+import com.wbillingsley.handy.Ref._
+import com.wbillingsley.handy.RefMany._
+import com.wbillingsley.handy.reactivestreams.ProcessorFuncs._
 import com.wbillingsley.handy.reactivestreams._
 import org.reactivestreams.Publisher
-import org.specs2.mutable.Specification
-import Ref._
-import RefMany._
-import ProcessorFuncs._
 import org.specs2.concurrent.ExecutionEnv
+import org.specs2.mutable.Specification
 
 import scala.collection.mutable
-import scala.concurrent.{Future, Promise}
 import scala.concurrent.duration._
+import scala.concurrent.{Future, Promise}
 
 class RStreamsSpec(implicit ee: ExecutionEnv) extends Specification {
 

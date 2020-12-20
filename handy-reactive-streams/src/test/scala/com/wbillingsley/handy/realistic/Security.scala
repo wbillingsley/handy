@@ -1,23 +1,15 @@
 package com.wbillingsley.handy.realistic
 
 import com.wbillingsley.handy._
-import com.wbillingsley.handy.Ref._
-
-import Security._
-
-
-/* 
- * Your Security classes
- */
 
 object Security {
-  def hasRole(user: RefOpt[User], role: Role):RefOpt[Approved] = {
+  def hasRole(user: RefOpt[User], role: Role): RefOpt[Approved] = {
     (for {
       u <- user if u.roles contains role
     } yield Approved("Is editor")) orElse RefOptFailed(Refused("You do not have the role " + role))
   }
 
-  val canRead = Perm.of[User,Page].onId {
+  val canRead = Perm.of[User, Page].onId {
     case (prior, page) =>
       for {
         p <- page
@@ -27,7 +19,7 @@ object Security {
       } yield a
   }
 
-  val canEdit = Perm.of[User,Page].onId {
+  val canEdit = Perm.of[User, Page].onId {
     case (prior, page) =>
       hasRole(prior.who, Editor).require
   }

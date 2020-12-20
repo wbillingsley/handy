@@ -1,6 +1,6 @@
 package com.wbillingsley.handy
 
-import Ref._
+import com.wbillingsley.handy.Ref._
 import org.specs2.mutable._
 
 object ApprovalSpec {

@@ -1,9 +1,8 @@
 package com.wbillingsley.handy;
 
-import org.specs2.mutable._
-
-import Ref._
+import com.wbillingsley.handy.Ref._
 import org.specs2.concurrent.ExecutionEnv
+import org.specs2.mutable._
 
 import scala.concurrent.{Future, Promise}
 

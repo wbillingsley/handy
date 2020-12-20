@@ -1,15 +1,14 @@
 package com.wbillingsley.handy.reactivestreams
 
+import com.wbillingsley.handy.Ref._
+import com.wbillingsley.handy.RefMany._
+import com.wbillingsley.handy._
+import com.wbillingsley.handy.reactivestreams.ProcessorFuncs._
+import org.reactivestreams.Publisher
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable._
-import com.wbillingsley.handy._
-import Ref._
-import RefMany._
-import ProcessorFuncs._
-import org.reactivestreams.Publisher
 
 import scala.concurrent.Future
-import akka.stream.scaladsl._
 
 class MapRSpec(implicit ee: ExecutionEnv) extends Specification {
 

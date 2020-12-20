@@ -1,9 +1,8 @@
 package com.wbillingsley.handy.realistic
 
+import com.wbillingsley.handy.Ref._
 import com.wbillingsley.handy._
-import Ref._
-
-import PageApp._
+import com.wbillingsley.handy.realistic.PageApp._
 
 /*
  * Our imaginary web framework.
@@ -14,8 +13,8 @@ case class PlainResponse(code:Int, content:String) extends Response
 
 object WebFramework {
 
-  import scala.concurrent._
   import scala.concurrent.ExecutionContext.Implicits._
+  import scala.concurrent._
 
   def Ok(str:String) = PlainResponse(200, str)
   

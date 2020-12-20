@@ -3,15 +3,15 @@
  */
 package com.wbillingsley.handy
 
-import org.junit.{BeforeClass, Test}
+import com.wbillingsley.handy.Ref._
+import com.wbillingsley.handy.RefMany._
 import org.junit.Assert._
+import org.junit.{BeforeClass, Test}
+import org.specs2.concurrent.ExecutionEnv
+import org.specs2.mutable._
 
 import scala.collection.mutable
 import scala.language.implicitConversions
-import Ref._
-import RefMany._
-import org.specs2.concurrent.ExecutionEnv
-import org.specs2.mutable._
 
 
 

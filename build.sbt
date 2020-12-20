@@ -9,10 +9,10 @@ lazy val commonSettings = Seq(
   crossScalaVersions := Seq("2.13.1", "3.0.0-M2"),
   licenses := Seq("MIT" -> url("http://www.opensource.org/licenses/mit-license.php")),
   homepage := Some(url("http://github.com/wbillingsley/handy")),
-  publishMavenStyle := true,
   libraryDependencies ++= Seq(
-    "junit" % "junit" % "4.7" % "test"
-  )
+    "org.scalameta" %% "munit" % "0.7.20" % Test
+  ),
+  testFrameworks += new TestFramework("munit.Framework")
 )
 
 // Bintray settings for publishing releases
@@ -34,9 +34,6 @@ pomExtra in ThisBuild := (
   </developers>
 )
 
-
-
-
 lazy val handy = (crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Pure) in file("handy"))
   .settings(commonSettings:_*)
   .settings(
@@ -46,6 +43,14 @@ lazy val handy = (crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Pure
 
 lazy val handyJvm = handy.jvm
 lazy val handyJs = handy.js
+
+lazy val handyReactiveStreams = (crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Pure) in file("handy-reactive-streams"))
+  .dependsOn(handy)
+  .settings(commonSettings:_*)
+  .settings(
+    name := "handy-reactive-streans",
+    libraryDependencies += "org.reactivestreams" % "reactive-streams" % "1.0.0",
+  )
 
 /*
 lazy val handyplay = (project in file("handy-play"))

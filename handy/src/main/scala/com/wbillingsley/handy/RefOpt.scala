@@ -73,7 +73,7 @@ object RefOpt {
   }
 
   def fromFutureOpt[T](fo:Future[Option[T]])(implicit ec:ExecutionContext):RefOpt[T] = {
-    new RefFuture(fo)(ec).flatMap(RefOpt.apply)
+    new RefFuture(fo)(ec).flatMap((x) => RefOpt.apply(x))
   }
 
   def none:RefOpt[Nothing] = RefNone
