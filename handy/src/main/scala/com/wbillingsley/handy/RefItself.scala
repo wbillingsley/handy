@@ -8,6 +8,8 @@ import scala.util.Success
  */
 case class RefItself[T](val item: T) extends RefSync[T] {
   
+  override def immediateId[TT >: T, Key <: Id[TT, _]](implicit g:GetsId[TT, Key]):Option[Key] = g.getId(item)
+  
   override def toEither = Right(item)
 
   override def toTry = Success(item)

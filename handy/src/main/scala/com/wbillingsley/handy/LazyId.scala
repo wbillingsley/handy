@@ -7,6 +7,10 @@ import scala.concurrent.Future
  */
 case class LazyId[C, T](val id: C)(using lookUpMethod:EagerLookUpOne[C, T]) extends Ref[T] {
 
+  // The immediate id should just be id, but the type-checker can't know that the type Key is the type C, so 
+  // we have to call "canonical"
+  override def immediateId[TT >: T, Key <: Id[TT, _]](implicit g:GetsId[TT, Key]):Option[Key] = g.canonical(id)
+
   final lazy val lookUp = lookUpMethod(id)
   
   export lookUp.toFuture
