@@ -12,8 +12,8 @@ import Ref._
  * Approvals also have a LookUpCache, which can set and used to avoid
  * calling the database mutliple times for the same item.
  */
-case class Approval[U](
-    who: RefOpt[U]
+class Approval[U](
+    val who: RefOpt[U]
 ) {
   import java.util._
 
@@ -28,11 +28,11 @@ case class Approval[U](
     approved
   }
 
-  def askAfresh(permission:Perm[U]):Ref[Approved] = permission.resolve(this)
+  def askAfresh(permission:Perm[U]):Ref[Approved] = permission.resolve(using this)
 
   def askOne(permission:Perm[U]):Ref[Approved] = {
     get(permission).map(Ref.itself).getOrElse {
-      for (appr <- permission.resolve(this)) yield add(permission, appr)
+      for (appr <- permission.resolve(using this)) yield add(permission, appr)
     }
   }
 
@@ -57,40 +57,31 @@ case class Refused(msg: String) extends Throwable(msg) {
   def toRef = RefFailed(this)
 }
 
-object Refused {
-  implicit def toRef(r:Refused):RefFailed = RefFailed(r)
-}
-
 /**
- * Permissions should return RefItself(Approved) if they decide that yes the user may do that.
- * There is an implicit conversion from Approved to RefItself(Approved), so they can also just return
- * Approved.
- */
-case class Approved(msg: String = "Approved") {
-  def toRef = RefItself(this)
-}
-
-object Approved {
-  implicit def toRef(a:Approved):Ref[Approved] = RefItself(a)
-}
+  * A value indicating that something has been approved.
+  * 
+  * The message is useful for debugging, as it can indicate what gave the approval.
+  */
+case class Approved(msg: String = "Approved") 
 
 /**
  * A permission that can be approved or denied
  * @tparam U the user class that this is approved for
  */
 trait Perm[U] {
-  def resolve(prior: Approval[U]):Ref[Approved]
+  def resolve(using prior: Approval[U]):Ref[Approved]
+  
+  def resolveTask(using prior: Approval[U]):Task[Approved] = Task.prepare(resolve)
 }
 
 object Perm {
 
-  implicit def toRefPerm[U](p:Perm[U]):Ref[Perm[U]] = p.itself
 
   /**
    * Creates a unique permission object
    */
   def unique[U](block: (Approval[U]) => Ref[Approved]):Perm[U] = new Perm[U] {
-    def resolve(prior: Approval[U]) = block(prior)
+    def resolve(using prior: Approval[U]) = block(prior)
   }
 
   /**
@@ -142,12 +133,12 @@ object Perm {
 
       override def hashCode = eq.hashCode
 
-      def resolve(prior: Approval[U]): Ref[Approved] = PermissionGenerator.this.resolve(prior, r)
+      def resolve(using prior: Approval[U]): Ref[Approved] = PermissionGenerator.this.resolve(prior, r)
     }
 
     def apply(r:Ref[T]):Ref[Perm[U]] = for { k <- r.refId(using g).require } yield new POI(k, r)
 
-    def apply(id:K)(using lu:EagerLookUpOne[K, T]):Ref[Perm[U]] = new POI(id, id.lookUp(using lu))
+    def apply(id:K)(using lu:EagerLookUpOne[K, T]):Ref[Perm[U]] = POI(id, id.lookUp(using lu)).itself
 
     def apply(oid:Option[K])(implicit lu:EagerLookUpOne[K, T]):RefOpt[Perm[U]] = {
       RefOpt(oid).flatMap((x) => apply(x))

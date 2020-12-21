@@ -81,4 +81,30 @@ class RefSuite extends munit.FunSuite {
     assertEquals(RefEmpty.flatMap((x) => RefIterableOnce(Seq(x, x))):RefMany[Int], RefEmpty)
   }
   
+  test("Ref for notation with Ref produces Ref") {
+    val result = for 
+      a <- RefItself(1)
+      b <- RefItself(a + 1)
+    yield b + 1
+    
+    assertEquals(result, RefItself(3))
+  }
+
+  test("Ref for notation with RefOpt produces Ref") {
+    val result = for
+      a <- RefItself(1)
+      b <- RefSome(a + 1)
+    yield b + 1
+    
+    assertEquals(result, RefSome(3))
+  }
+
+  test("Ref for notation with filter produces RefOpt") {
+    val result:RefOpt[Int] = for
+      a <- RefItself(1)
+      b <- RefItself(a + 1) if b % 2 == 0 
+    yield b + 1
+
+    assertEquals(result, RefSome(3))
+  }
 }

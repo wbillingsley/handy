@@ -3,11 +3,11 @@ package com.wbillingsley.handy
 /**
  * Indicates that an object has an `id` method that will return an `Id` to it.
  */
-trait HasId[+T, K] {
-  def id:Id[T, K]
+trait HasId[K] {
+  def id:K
 }
 
-trait HasStringId[+T] extends HasId[T, String]
+trait HasStringId extends HasId[String]
 
 /**
  * Knows how to get an `Id` from an object

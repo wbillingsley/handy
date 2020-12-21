@@ -155,10 +155,11 @@ trait Ref[+T] extends RSuper[T] {
 
   /**
    * Allows use in for comprehensions. Automatically routes to flatMapOne (bind), flatMapOpt, or flatMapMany
-   */
+   *
   def flatMap[B, R[_], Result[_]](func: T => R[B])(implicit imp: RCFMT[Ref, R, Result]):Result[B] = {
     imp.flatMap(this, func)
   }
+  */
 
   /** bind, as in monads */
   def bind[B](func: T => Ref[B]):Ref[B] = flatMapOne(func)
