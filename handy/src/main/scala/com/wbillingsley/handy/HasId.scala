@@ -12,26 +12,8 @@ trait HasStringId[+T] extends HasId[T, String]
 /**
  * Knows how to get an `Id` from an object
  */
-trait GetsId[-T, K] {
-  def getId[TT <: T](obj: TT): Option[Id[TT, K]]
+trait GetsId[T, Key <: Id[T, _]] {
+  def getId[TT <: T](obj: TT): Option[Key]
 
-  def canonical[TT <: T](o:Any):Option[Id[TT,K]]
-}
-
-object HasStringId {
-
-  implicit object getsStringId extends GetsId[HasStringId[_], String] {
-    def getId[T <: HasStringId[_]](obj: T) = {
-      import Id._
-
-      val k = obj.id.id
-      Some(k.asId[T])
-    }
-
-    def canonical[T <: HasStringId[_]](id:Any) = id match {
-      case s:String => Some(Id[T,String](s))
-      case _ => None
-    }
-  }
-
+  def canonical[TT <: T](o:Any):Option[Key]
 }

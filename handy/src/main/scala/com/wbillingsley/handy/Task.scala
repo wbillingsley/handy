@@ -1,6 +1,6 @@
 package com.wbillingsley.handy
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 
 type Task[+T] = ExecutionContext => Ref[T]
@@ -8,6 +8,9 @@ type TaskOpt[+T] = ExecutionContext => RefOpt[T]
 type TaskMany[+T] = ExecutionContext => RefMany[T]
 
 implicit object Task {
+  
+  /** Used in order to launch tasks on an alternative execution context */
+  private val done = Future.successful(())
   
   trait CFMT[-To[BB], +Result[BB]] {
     def flatMap[A, B](from:Task[A], to: A => To[B]):Result[B]
@@ -53,6 +56,15 @@ implicit object Task {
       imp.flatMap(task, func)
     }
   }
+  
+  /** Creates a Task[T] that will run on the execution context it is passed */
+  def prepare[T](f: => Ref[T]):Task[T] = (ec) => (new RefFuture(done)(ec)).flatMapOne(_ => f)
+
+  /** Creates a Task[T] that will run on the execution context it is passed */
+  def prepareOpt[T](f: => RefOpt[T]):TaskOpt[T] = (ec) => (new RefFuture(done)(ec)).flatMapOpt(_ => f)
+
+  /** Creates a Task[T] that will run on the execution context it is passed */
+  def prepareMany[T](f: => RefMany[T]):TaskMany[T] = (ec) => (new RefFuture(done)(ec)).flatMapMany(_ => f)
   
 }
 

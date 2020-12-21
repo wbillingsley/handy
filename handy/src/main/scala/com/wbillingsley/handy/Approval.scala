@@ -108,8 +108,8 @@ object Perm {
    * }</pre>
    *
    */
-  def onId[U, T, K](block: (Approval[U], Ref[T]) => Ref[Approved])(implicit g:GetsId[T, K]) = {
-    new PermissionGenerator(block)(g)
+  def onId[U, T, K <: Id[T, _]](block: (Approval[U], Ref[T]) => Ref[Approved])(using g:GetsId[T, K]) = {
+    PermissionGenerator(block)(using g)
   }
 
   /**
@@ -118,11 +118,11 @@ object Perm {
   def of[U,T] = new Typed[U,T]
   def apply[U,T] = of[U,T]
   class Typed[U,T] {
-    def onId[K](block: (Approval[U], Ref[T]) => Ref[Approved])(implicit g:GetsId[T, K]) = Perm.onId[U,T,K](block)(g)
+    def onId[K <: Id[T, _]](block: (Approval[U], Ref[T]) => Ref[Approved])(using g:GetsId[T, K]) = Perm.onId[U,T,K](block)(using g)
   }
 
 
-  class PermissionGenerator[U, T, K](resolve: (Approval[U], Ref[T]) => Ref[Approved])(implicit g:GetsId[T, K]) {
+  class PermissionGenerator[U, T, K <: Id[T, _]](resolve: (Approval[U], Ref[T]) => Ref[Approved])(using g:GetsId[T, K]) {
 
     import Id._
 
@@ -132,7 +132,7 @@ object Perm {
      */
     case class InnerEquality[K](id:K)
 
-    class POI(id:Id[T,K], r:Ref[T]) extends Perm[U] {
+    class POI(id:K, r:Ref[T]) extends Perm[U] {
       val eq = InnerEquality(id)
 
       override def equals(o:Any) = o match {
@@ -145,11 +145,11 @@ object Perm {
       def resolve(prior: Approval[U]): Ref[Approved] = PermissionGenerator.this.resolve(prior, r)
     }
 
-    def apply(r:Ref[T]):Ref[Perm[U]] = for { k <- r.refId.require } yield new POI(k, r)
+    def apply(r:Ref[T]):Ref[Perm[U]] = for { k <- r.refId(using g).require } yield new POI(k, r)
 
-    def apply(id:Id[T,K])(implicit lu:LookUp[T, K]):Ref[Perm[U]] = new POI(id, id.lookUp(lu))
+    def apply(id:K)(using lu:EagerLookUpOne[K, T]):Ref[Perm[U]] = new POI(id, id.lookUp(using lu))
 
-    def apply(oid:Option[Id[T,K]])(implicit lu:LookUp[T, K]):RefOpt[Perm[U]] = {
+    def apply(oid:Option[K])(implicit lu:EagerLookUpOne[K, T]):RefOpt[Perm[U]] = {
       RefOpt(oid).flatMap((x) => apply(x))
     }
   }

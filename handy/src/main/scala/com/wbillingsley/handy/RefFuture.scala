@@ -3,6 +3,7 @@ package com.wbillingsley.handy
 import scala.concurrent.Future
 import scala.language.higherKinds
 import scala.concurrent.ExecutionContext
+import scala.util.Success
 
 object RefFuture {
   /**
@@ -12,11 +13,15 @@ object RefFuture {
 }
 
 case class RefFuture[+T](future: Future[T])(implicit val executionContext:ExecutionContext) extends Ref[T] {
-  
-  /**
-   * To avoid programs being non-deterministic, we return None even if the Future has already completed
-   */
-  override def immediateId[K](implicit g:GetsId[T, K]):None.type = None
+
+  override def immediateId[TT >: T, Key <: Id[TT, _]](implicit g:GetsId[TT, Key]):Option[Key] = {
+    if (future.isCompleted) {
+      future.value match {
+        case Some(Success(v)) => g.getId(v)
+        case _ => None
+      }
+    } else None
+  }
 
   def foreach[U](f: (T) => U):Unit = {
     future.foreach(f)
@@ -50,10 +55,14 @@ case class RefFuture[+T](future: Future[T])(implicit val executionContext:Execut
 
 case class RefFutureRef[+T](futureRef: Future[Ref[T]])(implicit val executionContext:ExecutionContext = RefFuture.executionContext) extends Ref[T] {
 
-  /**
-   * To avoid programs being non-deterministic, we return None even if the Future has already completed
-   */
-  override def immediateId[K](implicit g:GetsId[T, K]):None.type = None
+  override def immediateId[TT >: T, Key <: Id[TT, _]](implicit g:GetsId[TT, Key]):Option[Key] = {
+    if (futureRef.isCompleted) {
+      futureRef.value match {
+        case Some(Success(v)) => v.immediateId(using g)
+        case _ => None
+      }
+    } else None
+  }
 
   override def foreach[U](f: (T) => U):Unit = {
     futureRef.foreach(_.foreach(f))

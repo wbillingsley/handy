@@ -151,7 +151,7 @@ trait Ref[+T] extends RSuper[T] {
   /**
    * Returns an ID for the object only if one is immediately available (ie, not for incomplete futures)
    */
-  def immediateId[K](implicit g:GetsId[T, K]):Option[Id[T,K]] = None
+  def immediateId[TT >: T, Key <: Id[TT, _]](implicit g:GetsId[TT, Key]):Option[Key] = None
 
   /**
    * Allows use in for comprehensions. Automatically routes to flatMapOne (bind), flatMapOpt, or flatMapMany
@@ -193,7 +193,7 @@ trait Ref[+T] extends RSuper[T] {
   /** Enables 'if' and 'match' in for comprehensions. NB, we're being a bit tricky because the return type changes. */
   def withFilter(pred: T => Boolean):RefOpt[T] = toRefOpt.withFilter(pred)
   
-  def refId[K](implicit g:GetsId[T, K]):RefOpt[Id[T,K]] = {
+  def refId[TT >: T, K <: Id[TT, _]](implicit g:GetsId[TT, K]):RefOpt[K] = {
     RefOpt.apply(immediateId(g)) orElse {
       this.flatMapOpt(i => RefOpt.apply(g.getId(i)))
     }
@@ -207,13 +207,6 @@ trait Ref[+T] extends RSuper[T] {
 
   def option:Ref[Option[T]] = toRefOpt.option
 
-}
-
-/**
- * A `Ref` that has an ID that can immediately be got.
- */
-trait IdImmediate[+T] {
-  def getId[K](implicit g:GetsId[T, K]):Option[Id[T,K]]
 }
 
 /**

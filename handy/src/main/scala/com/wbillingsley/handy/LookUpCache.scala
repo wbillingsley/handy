@@ -1,5 +1,6 @@
 package com.wbillingsley.handy
 
+
 /**
  * A concurrent mutable cache for Id and LookUps
  */
@@ -7,20 +8,20 @@ class LookUpCache {
 
   import java.util.concurrent
 
-  case class LookUpPair[T,K](id:Id[T,K], lu:LookUp[T,K])
+  case class LookUpPair[C,T](id:C, lu:LookUp[C,T])
 
   private val cache = new concurrent.ConcurrentHashMap[LookUpPair[_,_],Ref[_]]()
 
   // Note that we constrain the T -> Ref[T] relationship by what we put in the map
-  private def get[T,K](pair:LookUpPair[T,K]):Option[Ref[T]] = Option(cache.get(pair).asInstanceOf[Ref[T]])
+  private def get[C, T](pair:LookUpPair[C, T]):Option[Ref[T]] = Option(cache.get(pair).asInstanceOf[Ref[T]])
 
   // Note that we constrain the T -> Ref[T] relationship by what we put in the map
-  private def storeAndLookUp[T,K](pair:LookUpPair[T,K]):Ref[T] = {
-    val r:Ref[T] = pair.lu.one[K](pair.id)
+  private def storeAndLookUp[C, T](pair:LookUpPair[C, T]):Ref[T] = {
+    val r:Ref[T] = pair.lu.eagerOne(pair.id)
     store(pair, r)
   }
 
-  private def store[T,K](pair:LookUpPair[T,K], r:Ref[T]):Ref[T] = {
+  private def store[C, T](pair:LookUpPair[C, T], r:Ref[T]):Ref[T] = {
     cache.put(pair, r)
     r
   }
@@ -28,48 +29,29 @@ class LookUpCache {
   /**
    * Looks up the Id in the cache, or looks it up and stores it in the case of a cache miss.
    */
-  def lookUp[T,K](id:Id[T,K])(implicit lu:LookUp[T,K]):Ref[T] = {
+  def lookUp[C, T](id:C)(implicit lu:LookUp[C, T]):Ref[T] = {
     val pair = LookUpPair(id, lu)
     get(pair) getOrElse storeAndLookUp(pair)
   }
 
-  def lookUpOrStore[T, KK](r: Ref[T])(implicit g: GetsId[T, KK], lu:LookUp[T, KK]):Ref[T] = {
-    r match {
-      case li:LazyId[T, KK] => {
-        val rPair = for {
-          id <- li.refId(g).require
-        } yield LookUpPair(id, lu)
-
-        rPair flatMap { pair =>
-          get(pair) getOrElse storeAndLookUp(pair)
-        }
-      }
-      case r:Ref[T] => {
-        r.refId.require flatMap { id =>
-          val pair = LookUpPair(id, lu)
-          store(pair, r)
-        }
-      }
-    }
+  def replace[C,T](id:C)(using lu:LookUp[C,T]):Ref[T] = {
+    val pair = LookUpPair(id, lu)
+    storeAndLookUp(pair)
   }
 
-  def replace[T,K](id:Id[T,K])(implicit lu:LookUp[T,K]):Ref[T] = storeAndLookUp(LookUpPair(id, lu))
-
-  def replace[T,K](item:T)(implicit g: GetsId[T, K], lu:LookUp[T, K]):Ref[T] = {
-    g.getId(item) match {
-      case Some(id) => store(LookUpPair(id, lu), RefItself(item))
-      case _ => RefFailed(new IllegalStateException("Could not extract ID from item"))
-    }
+  def replace[C, T](id:C, item:T)(implicit lu:LookUp[C, T]):Ref[T] = {
+    val pair = LookUpPair(id, lu)
+    store(pair, RefItself(item))
   }
 
-  def remove[T,K](id:Id[T,K])(implicit lu:LookUp[T,K]): Unit = {
-    cache.remove(LookUpPair(id, lu))
+  def remove[C, T](id:C)(implicit lu:LookUp[C, T]): Unit = {
+    val pair = LookUpPair(id, lu)
+    cache.remove(pair)
   }
 
   /**
    * Looks up the Id in the cache, or looks it up and stores it in the case of a cache miss.
    */
-  def apply[T,K](id:Id[T,K])(implicit lu:LookUp[T,K]):Ref[T] = lookUp(id)(lu)
-
-  def apply[T, K](r: Ref[T])(implicit g: GetsId[T, K], lu:LookUp[T, K]):Ref[T] = lookUpOrStore(r)(g, lu)
+  def apply[C, T](id:C)(implicit lu:LookUp[C, T]):Ref[T] = lookUp(id)(using lu)
+  
 }
