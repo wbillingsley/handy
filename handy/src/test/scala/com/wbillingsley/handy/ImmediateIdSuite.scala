@@ -26,7 +26,7 @@ class ImmediateIdSuite extends munit.FunSuite {
     
     override def getId[TT <: Apple](obj: TT): Option[AppleId] = Some(AppleId(obj.id))
     
-    override def canonical[TT <: Apple](o: Any): Option[AppleId] = o match {
+    override def canonical(o: Any): Option[AppleId] = o match {
       case id:AppleId => Some(id)
       case _ => None
     }

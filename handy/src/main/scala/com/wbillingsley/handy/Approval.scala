@@ -59,10 +59,10 @@ case class Refused(msg: String) extends Throwable(msg) {
 
 /**
   * A value indicating that something has been approved.
-  * 
+  *
   * The message is useful for debugging, as it can indicate what gave the approval.
   */
-case class Approved(msg: String = "Approved") 
+case class Approved(msg: String = "Approved")
 
 /**
  * A permission that can be approved or denied
@@ -70,7 +70,7 @@ case class Approved(msg: String = "Approved")
  */
 trait Perm[U] {
   def resolve(using prior: Approval[U]):Ref[Approved]
-  
+
   def resolveTask(using prior: Approval[U]):Task[Approved] = Task.prepare(resolve)
 }
 
