@@ -8,7 +8,7 @@ import scala.language.{higherKinds, postfixOps}
 /**
  * A reference to a collection of items.
  */
-case class RefIterableOnce[T, C[TT] <: IterableOnce[TT]](items: C[T]) extends RefManySync[T] {
+case class RefIterableOnce[T, C <: IterableOnce[T]](items: C) extends RefManySync[T] {
 
   override def first:RefOpt[T] = RefOpt(headOption)
 

@@ -44,15 +44,11 @@ trait RSuper[+T]
  */
 object Ref {
 
-  import scala.language.implicitConversions
-
-  /**
-   * Allows us to say "foo itself" and get a RefItself(foo)
-   */
-  implicit class Itself[T](val it:T) extends AnyVal {
-    def itself = RefItself(it)
+  def fromTry[T](t:Try[T]):RefSync[T] = t match {
+    case Success(item) => RefItself(item)
+    case Failure(exc) => RefFailed(exc)
   }
-
+  
   def fromOption[T](opt: Option[T]):RefOpt[T] = RefOpt.apply(opt)
 
   def fromFuture[T](fut: Future[T])(implicit ec:ExecutionContext):RefFuture[T] = {
@@ -95,30 +91,7 @@ object Ref {
   implicit class travToRef[T, C[TT] <: IterableOnce[TT]](val underlying: C[T]) extends AnyVal {
     def toRefMany = RefIterableOnce(underlying)
   }
-
-  implicit class futToRef[T](val underlying: Future[T]) extends AnyVal {
-    def toRef(implicit ec:ExecutionContext) = new RefFuture(underlying)(ec)
-  }
-
-  implicit class futOptToRefOpt[T](val underlying: Future[Option[T]]) extends AnyVal {
-    def toRefOpt(implicit ec:ExecutionContext) = RefOpt.fromFutureOpt(underlying)(ec)
-  }
-
-  implicit class optToRef[T](val underlying: Option[T]) extends AnyVal {
-    def toRef:RefOpt[T] = RefOpt.apply(underlying)
-  }
-
-  implicit class tryToRef[T](val underlying: scala.util.Try[T]) extends AnyVal {
-    import scala.util.{Success, Failure}
-
-    def toRef:Ref[T] = underlying match {
-      case Success(item) => RefItself(item)
-      case Failure(f) => RefFailed(f)
-    }
-  }
-
-  implicit def throwableToRef(exc: Throwable):RefFailed = RefFailed(exc)
-
+  
   def itself[T](item: T) = RefItself(item)
 
   def pure[T](item: T) = RefItself(item)
@@ -218,4 +191,48 @@ trait RefSync[+T] extends Ref[T] {
 
   def toTry:Try[T]
 }
+
+trait RefOps {
+  
+  import scala.annotation.targetName
+
+  /**
+    * Allows us to say "foo itself" and get a RefItself(foo)
+    */
+  extension[T] (item:T) {
+    def itself:RefItself[T] = RefItself(item)
+  }
+  
+  extension (exc:Throwable) {
+    @targetName("excToRef") def toRef:RefFailed = RefFailed(exc)
+
+    @targetName("excToRefOpt") def toRefOpt:RefOptFailed = RefOptFailed(exc)
+  }
+
+  /**
+    * Allows t:Try[T] to say t.toRef
+    */
+  extension[T] (t:Try[T]) {
+    @targetName("tryToRef") def toRef:RefSync[T] = Ref.fromTry(t)
+  }
+
+  extension[T] (opt:Option[T]) {
+    @targetName("optToRefOpt") def toRefOpt:RefOpt[T] = RefOpt.apply(opt)
+  }
+
+  extension[T] (f:Future[T]) {
+    @targetName("futToRef") def toRef(using ec:ExecutionContext):RefFuture[T] = RefFuture.apply(f)
+  }
+
+  extension[T] (f:Future[Option[T]]) {
+    @targetName("futOptToRefOpt") def toRefOpt(using ec:ExecutionContext):RefOpt[T] = RefOpt.fromFutureOpt(f)
+  }
+  
+  extension[T, C <: IterableOnce[T]] (it:C) {
+    @targetName("itToRefMany") def toRefMany:RefIterableOnce[T, C] = RefIterableOnce(it)
+  }
+
+}
+
+given refOps as RefOps = new RefOps {}
 
