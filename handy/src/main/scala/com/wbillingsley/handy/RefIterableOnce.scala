@@ -1,7 +1,5 @@
 package com.wbillingsley.handy
 
-import com.wbillingsley.handy.reactivestreams.TakeWhileR
-
 import scala.annotation.tailrec
 import scala.language.{higherKinds, postfixOps}
 

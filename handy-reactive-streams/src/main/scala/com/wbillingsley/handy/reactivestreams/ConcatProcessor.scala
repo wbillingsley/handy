@@ -1,9 +1,9 @@
 package com.wbillingsley.handy.reactivestreams
 
-import com.wbillingsley.handy.{RefNone, RefFailed, Ref}
-import org.reactivestreams.{Subscriber, Subscription, Processor, Publisher}
+import com.wbillingsley.handy.{Ref, RefFailed, RefNone}
+import org.reactivestreams.{Processor, Publisher, Subscriber, Subscription}
 
-import scala.concurrent.{ExecutionContext, Promise, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 /**
   * A Processor that (possibly asynchronously) processes each item.

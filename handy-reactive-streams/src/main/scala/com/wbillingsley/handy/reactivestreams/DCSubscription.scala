@@ -1,6 +1,6 @@
 package com.wbillingsley.handy.reactivestreams
 
-import org.reactivestreams.{Subscription, Subscriber}
+import org.reactivestreams.{Subscriber, Subscription}
 
 import scala.concurrent.{ExecutionContext, Future}
 

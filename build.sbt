@@ -38,7 +38,6 @@ lazy val handy = (crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Pure
   .settings(commonSettings:_*)
   .settings(
     name := "handy",
-    libraryDependencies += "org.reactivestreams" % "reactive-streams" % "1.0.0",
   )
 
 lazy val handyJvm = handy.jvm

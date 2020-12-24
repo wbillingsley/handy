@@ -1,10 +1,10 @@
-package com.wbillingsley.handy
-
-import java.lang.Throwable
+package com.wbillingsley.handy.reactivestreams
 
 import com.wbillingsley.handy.reactivestreams._
-import org.reactivestreams.{Processor, Subscription, Subscriber, Publisher}
+import com.wbillingsley.handy.{RMPublisher, Ref, RefFuture, RefItself, RefMany, RefNone, RefOpt, RefSome}
+import org.reactivestreams.{Processor, Publisher, Subscriber, Subscription}
 
+import java.lang.Throwable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 

@@ -1,10 +1,9 @@
 package com.wbillingsley.handy.reactivestreams
 
-import com.wbillingsley.handy._
+import com.wbillingsley.handy.{Ref, RefFuture, RefOpt, RefSome}
 import org.reactivestreams.{Processor, Publisher, Subscriber, Subscription}
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext, Future, Promise}
+import scala.concurrent.{ExecutionContext, Promise}
 
 /**
   * A Processor that (possibly asynchronously) processes each item.
@@ -15,12 +14,12 @@ import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 object ProcessorFuncs {
 
 
-  def headOption[T](publisher: Publisher[T])(implicit ec:ExecutionContext):RefOpt[T] = {
+  def headOption[T](publisher: Publisher[T])(implicit ec: ExecutionContext): RefOpt[T] = {
 
     val p = Promise[Option[T]]
 
     publisher.subscribe(new Subscriber[T] {
-      var os:Option[Subscription] = None
+      var os: Option[Subscription] = None
 
       override def onError(t: Throwable): Unit = p.failure(t)
 
@@ -37,13 +36,13 @@ object ProcessorFuncs {
     RefFuture(p.future).flatMapOpt(RefOpt.apply)
   }
 
-  def collect[T](publisher:Publisher[T])(implicit ec:ExecutionContext):Ref[Seq[T]] = {
+  def collect[T](publisher: Publisher[T])(implicit ec: ExecutionContext): Ref[Seq[T]] = {
 
     val b = scala.collection.mutable.Buffer.empty[T]
     val p = Promise[Seq[T]]
 
     publisher.subscribe(new Subscriber[T] {
-      var os:Option[Subscription] = None
+      var os: Option[Subscription] = None
 
       override def onError(t: Throwable): Unit = p.failure(t)
 
@@ -60,7 +59,7 @@ object ProcessorFuncs {
       override def onNext(t: T): Unit = {
         //println(s"received $t")
         b.append(t)
-        for { s <- os } s.request(1)
+        for {s <- os} s.request(1)
       }
 
     })
@@ -68,11 +67,11 @@ object ProcessorFuncs {
     new RefFuture(p.future)
   }
 
-  implicit class ProcessorOps[T](val p:Publisher[T]) extends AnyVal {
+  implicit class ProcessorOps[T](val p: Publisher[T]) extends AnyVal {
 
-    def mapR[B](f: T => RefOpt[B])(implicit ec:ExecutionContext):Processor[T, B] = new MapR[T, B](p)(f)
+    def mapR[B](f: T => RefOpt[B])(implicit ec: ExecutionContext): Processor[T, B] = new MapR[T, B](p)(f)
 
-    def map[B](f: T => B)(implicit ec:ExecutionContext):Processor[T, B] = new MapR[T, B](p)(f.andThen(RefSome.apply))
+    def map[B](f: T => B)(implicit ec: ExecutionContext): Processor[T, B] = new MapR[T, B](p)(f.andThen(RefSome.apply))
 
   }
 
