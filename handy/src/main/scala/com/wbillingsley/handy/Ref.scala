@@ -165,7 +165,9 @@ trait Ref[+T] extends RSuper[T] {
   def foreach[U](func: T => U):Unit 
 
   /** Enables 'if' and 'match' in for comprehensions. NB, we're being a bit tricky because the return type changes. */
-  def withFilter(pred: T => Boolean):RefOpt[T] = toRefOpt.withFilter(pred)
+  def withFilter(pred: T => Boolean):Ref[T] = toRefOpt.withFilter(pred).require
+  
+  def requiring(pred: T => Boolean, orElse: => RefFailed):Ref[T] = toRefOpt.withFilter(pred).orElse(orElse)
   
   def refId[TT >: T, K <: Id[TT, _]](implicit g:GetsId[TT, K]):RefOpt[K] = {
     RefOpt.apply(immediateId(g)) orElse {

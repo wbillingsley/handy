@@ -22,14 +22,6 @@ trait RefOpt[+T] extends RSuper[T] {
   /** Bind, as in monads */
   def bind[B](func: T => RefOpt[B]):RefOpt[B] = flatMapOpt(func)
 
-  /**
-    * Allows use in for comprehensions.
-    * Automatically routes to flatMapOne, flatMapOpt (bind), or flatMapMany
-    */
-  def flatMap[B, R[_], Result[_]](func: T => R[B])(implicit imp: RCFMT[RefOpt, R, Result]):Result[B] = {
-    imp.flatMap(this, func)
-  }
-
   /** Allows for comprehensions involving Ref[T] */
   def flatMapOne[B](func: T => Ref[B]):RefOpt[B]
 

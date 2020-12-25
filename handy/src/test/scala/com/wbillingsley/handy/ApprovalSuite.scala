@@ -25,7 +25,7 @@ class ApprovalSuite extends munit.FunSuite {
     4 -> Apple(AppleId(4), "Pink Lady"),
     5 -> Apple(AppleId(5), "Granny Smith")
   )
-  
+
   case class Orange(id:OrangeId, name:String) extends HasId[OrangeId]
   case class OrangeId(id:Int) extends Id[Orange, Int]
   given getOrangeId as GetsId[Orange, OrangeId] = autoGetsId[Orange, OrangeId]
@@ -34,34 +34,34 @@ class ApprovalSuite extends munit.FunSuite {
     2 -> Orange(OrangeId(2), "Valencia")
   )
 
-  
+
   /*
    * Set up some permissions.
    */
-  
+
   /** Define a permission manually as a Case Class */
   case class CanEatOrange(id:OrangeId) extends Perm[User] {
     def resolve(using a:Approval[User]):Ref[Approved] = {
       for
         u <- a.who orFail Refused("Not logged in")
-        even <- RefItself(u).withFilter(_.id.id % 2 == 0) orFail Refused("Odd users may not eat oranges")
+        even <- RefItself(u).requiring(_.id.id % 2 == 0, Refused("Odd users may not eat oranges").toRef)
       yield Approved("Even users may eat oranges")
     }
   }
-  
+
   /** Define the same permission in "permission generator" style */
   val canEatOrange = Perm.onId[User, Orange, OrangeId] { (approval, rOrange) =>
     for
       u <- approval.who orFail Refused("Not logged in")
-      even <- RefItself(u).withFilter(_.id.id % 2 == 0) orFail Refused("Odd users may not eat oranges")
+      even <- RefItself(u).requiring(_.id.id % 2 == 0, Refused("Odd users may not eat oranges").toRef)
     yield Approved("Even users may eat oranges")
   }
-  
+
   /** Define a different permission using another permission generator */
-  val canEatApple = Perm.onId[User, Apple, AppleId] { (approval, rApple) => 
-    for 
+  val canEatApple = Perm.onId[User, Apple, AppleId] { (approval, rApple) =>
+    for
       u <- approval.who orFail Refused("Not logged in")
-      a <- rApple.withFilter(_.id.id % 2 != 0) orFail Refused("Only odd apples may be eaten")
+      a <- rApple.requiring(_.id.id % 2 != 0, Refused("Only odd apples may be eaten").toRef)
     yield Approved("Users may eat odd apples")
   }
 
@@ -78,20 +78,20 @@ class ApprovalSuite extends munit.FunSuite {
 
     assertEquals(a askOne CanEatOrange(OrangeId(1)), RefFailed(Refused("Odd users may not eat oranges")))
   }
-  
+
   test("Synchronous approvals using permission generators should be considered equal if they have the same id and generator") {
     given lookUpUser as EagerLookUpOne[UserId, User] = (uId) => RefOpt(users.get(uId.id)).require
     given lookUpApple as EagerLookUpOne[AppleId, Apple] = (aId) => RefOpt(apples.get(aId.id)).require
 
     given a as Approval[User] = Approval(LazyId(UserId(1)).toRefOpt)
-    
+
     // Check that the two permissions are equal. Note that we have not looked up the apple or resolved either permission.
     // We have to "for" inside the Refs, but it is synchronous in this case
     var checked = false
-    for 
+    for
       perm1 <- canEatApple(RefItself(apples(1)))
       perm2 <- canEatApple(LazyId(AppleId(1)))
-    do { 
+    do {
       assertEquals(perm1, perm2)
       checked = true
     }

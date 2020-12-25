@@ -100,11 +100,11 @@ class RefSuite extends munit.FunSuite {
   }
 
   test("Ref for notation with filter produces RefOpt") {
-    val result:RefOpt[Int] = for
+    val result = for
       a <- RefItself(1)
       b <- RefItself(a + 1) if b % 2 == 0 
     yield b + 1
 
-    assertEquals(result, RefSome(3))
+    assertEquals(result, RefItself(3))
   }
 }
