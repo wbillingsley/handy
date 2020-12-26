@@ -36,9 +36,17 @@ case class RefIterableOnce[T, C <: IterableOnce[T]](items: C) extends RefManySyn
   override def collect = RefItself(items.iterator.toSeq)
 
   override def toSeq: Ref[Seq[T]] = collect
+  
+  class RIterator(inner:Iterator[T]) extends RefIterator[T] {
+    private val no = inner.nextOption()
+    override def item: RefOpt[T] = no.toRefOpt
+    override def next: RefOpt[RefIterator[T]] = (no.map(_ => new RIterator(inner))).toRefOpt
+  }
+
+  override def iterator: RefOpt[RefIterator[T]] = RefSome(new RIterator(items.iterator))
 }
 
-case class RefIterableRef[T, C[TT] <: IterableOnce[TT]](refs: IterableOnce[Ref[T]]) extends RefMany[T] {
+case class RefIterableRef[T, C <: IterableOnce[Ref[T]]](refs: C) extends RefMany[T] {
 
   override def first:RefOpt[T] = RefOpt(refs.iterator.to(Iterable).headOption).flatMapOne(identity)
 
@@ -79,9 +87,18 @@ case class RefIterableRef[T, C[TT] <: IterableOnce[TT]](refs: IterableOnce[Ref[T
 
   override def recoverManyWith[B >: T](pf: PartialFunction[Throwable, RefMany[B]]):RefMany[T] = this
 
+
+  class RIterator(inner:Iterator[Ref[T]]) extends RefIterator[T] {
+    private val no = inner.nextOption()
+    override def item: RefOpt[T] = no.toRefOpt.flatMapOne(identity)
+    override def next: RefOpt[RefIterator[T]] = (no.map(_ => new RIterator(inner))).toRefOpt
+  }
+
+  override def iterator: RefOpt[RefIterator[T]] = RefSome(new RIterator(refs.iterator))
+  
 }
 
-case class RefIterableRefOpt[+T](refs: IterableOnce[RefOpt[T]]) extends RefMany[T] {
+case class RefIterableRefOpt[T, C <: IterableOnce[RefOpt[T]]](refs: C) extends RefMany[T] {
 
   /** map, as in functors */
   override def map[B](func: T => B): RefMany[B] = {
@@ -134,9 +151,18 @@ case class RefIterableRefOpt[+T](refs: IterableOnce[RefOpt[T]]) extends RefMany[
     * fold(initial){ (_,_) => initial } but without calling the empty folder for each value
     */
   override def whenReady[B](f: RefMany[T] => B): Ref[B] = RefItself(f(this))
+
+
+  class RIterator(inner:Iterator[RefOpt[T]]) extends RefIterator[T] {
+    private val no = inner.nextOption()
+    override def item: RefOpt[T] = no.toRefOpt.flatMapOpt(identity)
+    override def next: RefOpt[RefIterator[T]] = (no.map(_ => new RIterator(inner))).toRefOpt
+  }
+
+  override def iterator: RefOpt[RefIterator[T]] = RefSome(new RIterator(refs.iterator))
 }
 
-case class RefIterableRefMany[T, C[TT] <: IterableOnce[TT]](refs: IterableOnce[RefMany[T]]) extends RefMany[T] {
+case class RefIterableRefMany[T, C <: IterableOnce[RefMany[T]]](refs: C) extends RefMany[T] {
 
   def first:RefOpt[T] = refs.iterator.foldLeft[RefOpt[T]](RefNone) { (opt, rm) => opt orElse rm.first }
 
@@ -174,5 +200,26 @@ case class RefIterableRefMany[T, C[TT] <: IterableOnce[TT]](refs: IterableOnce[R
   
   def recoverManyWith[B >: T](pf: PartialFunction[Throwable, RefMany[B]]):RefMany[B] = this
 
+  class RIterator(rms:Iterator[RefMany[T]], delegate:RefIterator[T]) extends RefIterator[T] {
+    override def item: RefOpt[T] = delegate.item
+    
+    override def next: RefOpt[RefIterator[T]] = {
+      delegate.next.option.flatMap {
+        case Some(nextDel) => RefSome(RIterator(rms, nextDel))
+        case None =>
+          (for
+            next <- rms.nextOption().toRefOpt
+            del <- next.iterator
+          yield RIterator(rms, del))
+      }
+    }
+  }
 
+  override def iterator: RefOpt[RefIterator[T]] = { 
+    val it = refs.iterator
+    for 
+      rm <- it.nextOption().toRefOpt
+      del <- rm.iterator
+    yield RIterator(it, del)
+  }
 }

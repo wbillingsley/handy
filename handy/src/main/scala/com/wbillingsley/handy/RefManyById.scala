@@ -8,7 +8,7 @@ import Ref._
 case class RefManyById[K, T](ids: K)(using lu:EagerLookUpMany[K, T]) extends RefMany[T] {
 
   final lazy val lookedUp = lu(ids)
-  
+
   export lookedUp.first
   export lookedUp.flatMapOne
   export lookedUp.flatMapOpt
@@ -19,6 +19,7 @@ case class RefManyById[K, T](ids: K)(using lu:EagerLookUpMany[K, T]) extends Ref
   export lookedUp.withFilter
   export lookedUp.map
   export lookedUp.whenReady
+  export lookedUp.iterator
 
 }
 

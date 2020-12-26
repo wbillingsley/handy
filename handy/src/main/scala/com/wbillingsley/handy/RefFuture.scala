@@ -133,6 +133,8 @@ case class RefFutureRefMany[+T](futureRef: Future[RefMany[T]])(implicit val exec
 
   def first:RefOpt[T] = RefFutureRefOpt(futureRef.map(_.first))
 
+  override def iterator: RefOpt[RefIterator[T]] = RefFutureRefOpt(futureRef.map(_.iterator))
+
   //def takeWhile(p: T => Boolean):RefMany[T] = RefFutureRefMany(futureRef.map(_.takeWhile(p)))
 
 }

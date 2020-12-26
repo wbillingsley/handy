@@ -57,6 +57,9 @@ trait RefMany[+T] extends RSuper[T] {
     }.map(_.toSeq)
   }
 
+  def iterator:RefOpt[RefIterator[T]]
+
+
 }
 
 trait RefManySync[+T] extends RefMany[T] {
@@ -143,6 +146,8 @@ case class RefManyFailed(throwable: Throwable) extends RefMany[Nothing] with Ref
 
   override def toSeq: Ref[Seq[Nothing]] = RefFailed(throwable)
 
+  override def iterator: RefOpt[RefIterator[Nothing]] = RefOptFailed(throwable)
+
 }
 
 object RefEmpty extends RefManySync[Nothing] {
@@ -180,4 +185,6 @@ object RefEmpty extends RefManySync[Nothing] {
     * fold(initial){ (_,_) => initial } but without calling the empty folder for each value
     */
   override def whenReady[B](f: RefMany[Nothing] => B): Ref[B] = RefItself(f(this))
+
+  override def iterator: RefOpt[RefIterator[Nothing]] = RefNone
 }
