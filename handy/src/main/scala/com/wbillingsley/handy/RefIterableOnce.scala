@@ -36,14 +36,18 @@ case class RefIterableOnce[T, C <: IterableOnce[T]](items: C) extends RefManySyn
   override def collect = RefItself(items.iterator.toSeq)
 
   override def toSeq: Ref[Seq[T]] = collect
-  
-  class RIterator(inner:Iterator[T]) extends RefIterator[T] {
-    private val no = inner.nextOption()
-    override def item: RefOpt[T] = no.toRefOpt
-    override def next: RefOpt[RefIterator[T]] = (no.map(_ => new RIterator(inner))).toRefOpt
+
+  class RIterator(it:Iterator[T], thisItem:T) extends RefIterator[T] {
+    override def item: RefOpt[T] = RefSome(thisItem)
+    override def next: RefOpt[RefIterator[T]] = for item <- it.nextOption().toRefOpt yield RIterator(it, item)
   }
 
-  override def iterator: RefOpt[RefIterator[T]] = RefSome(new RIterator(items.iterator))
+  override def iterator: RefOpt[RefIterator[T]] = {
+    val it = items.iterator
+    for
+    item <- it.nextOption().toRefOpt
+      yield RIterator(it, item)
+  }
 }
 
 case class RefIterableRef[T, C <: IterableOnce[Ref[T]]](refs: C) extends RefMany[T] {
@@ -88,13 +92,17 @@ case class RefIterableRef[T, C <: IterableOnce[Ref[T]]](refs: C) extends RefMany
   override def recoverManyWith[B >: T](pf: PartialFunction[Throwable, RefMany[B]]):RefMany[T] = this
 
 
-  class RIterator(inner:Iterator[Ref[T]]) extends RefIterator[T] {
-    private val no = inner.nextOption()
-    override def item: RefOpt[T] = no.toRefOpt.flatMapOne(identity)
-    override def next: RefOpt[RefIterator[T]] = (no.map(_ => new RIterator(inner))).toRefOpt
+  class RIterator(it:Iterator[Ref[T]], thisItem:Ref[T]) extends RefIterator[T] {
+    override def item: RefOpt[T] = thisItem.toRefOpt
+    override def next: RefOpt[RefIterator[T]] = for item <- it.nextOption().toRefOpt yield RIterator(it, item)
   }
 
-  override def iterator: RefOpt[RefIterator[T]] = RefSome(new RIterator(refs.iterator))
+  override def iterator: RefOpt[RefIterator[T]] = {
+    val it = refs.iterator
+    for
+      item <- it.nextOption().toRefOpt
+    yield RIterator(it, item)
+  }
   
 }
 

@@ -2,10 +2,14 @@ package com.wbillingsley.handy
 
 import com.wbillingsley.handy.Trampolines._
 
-import scala.concurrent.{Future, ExecutionContext}
+import scala.annotation.tailrec
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
-  * A possibly-asynchronous iterator across a RefMany[T]
+  * A possibly-asynchronous immutable iterator across a RefMany[T].
+  * 
+  * Note the similarity to a List. `item` is analagous to `head`, except that it is permitted to be absent (or to fail).
+  * `next` is analagous to tail
   *
   * @tparam T
   */
@@ -114,14 +118,13 @@ object RefIterator {
   */
 trait RefConsumer[-T, R] {
 
-  def process(b:R, a:RefOpt[T]):Ref[(R, Option[RefConsumer[T, R]])]
+  def process(b: R, a: RefOpt[T]): Ref[(R, Option[RefConsumer[T, R]])]
 
 }
 
 object RefConsumer {
 
   def foldLeft[T, R](rm:RefMany[T])(start:R)(f: (R, T) => R)(using ec:ExecutionContext):Ref[R] = rm.iterator.flatMap({ it =>
-    
     val consumer = new RefConsumer[T, R] {
       var res = start
 
@@ -139,3 +142,15 @@ object RefConsumer {
   }) orElse start.itself
 
 }
+
+/*
+enum Iteratee[T, R] {
+  case Done(item: R) extends Iteratee[T, R]
+  case Continue(item: R, f: RefOpt[T] => Ref[Iteratee[T, R]]) extends Iteratee[T, R]
+}
+
+object Iteratee {
+  object EOF
+  type Input[T] = RefOpt[T] | EOF.type
+}
+*/
