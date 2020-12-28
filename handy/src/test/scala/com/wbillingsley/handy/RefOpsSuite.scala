@@ -33,13 +33,13 @@ class RefOpsSuite extends munit.FunSuite {
   }
 
   test("Future[T].toRef compiles") {
-    given ec as ExecutionContext = ExecutionContext.global
+    given ec: ExecutionContext = ExecutionContext.global
 
     (for v <- Future.apply(1).toRef yield assertEquals(v, 1)).toFuture
   }
 
   test("Future[Option[T]].toRefOpt compiles") {
-    given ec as ExecutionContext = ExecutionContext.global
+    given ec: ExecutionContext = ExecutionContext.global
 
     (for v <- Future.apply(Some(1)).toRefOpt yield assertEquals(v, 1)).require.toFuture
   }

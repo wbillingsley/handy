@@ -236,5 +236,5 @@ trait RefOps {
 
 }
 
-given refOps as RefOps = new RefOps {}
+given refOps:RefOps = new RefOps {}
 

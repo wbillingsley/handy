@@ -4,9 +4,9 @@ import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 lazy val commonSettings = Seq(
   organization := "com.wbillingsley",
   version := "0.11.0-SNAPSHOT",
-  scalaVersion := "3.0.0-M2",
+  scalaVersion := "3.0.0-M3",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature"),
-  crossScalaVersions := Seq("2.13.1", "3.0.0-M2"),
+  crossScalaVersions := Seq("3.0.0-M3"),
   licenses := Seq("MIT" -> url("http://www.opensource.org/licenses/mit-license.php")),
   homepage := Some(url("http://github.com/wbillingsley/handy")),
   libraryDependencies ++= Seq(

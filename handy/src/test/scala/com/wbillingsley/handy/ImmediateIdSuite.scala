@@ -22,7 +22,7 @@ class ImmediateIdSuite extends munit.FunSuite {
     RefOpt(apples.get(id.id))
   }
   
-  given getsAppleId as GetsId[Apple, AppleId] with {
+  given getsAppleId: GetsId[Apple, AppleId] with {
     
     override def getId[TT <: Apple](obj: TT): Option[AppleId] = Some(AppleId(obj.id))
     
@@ -37,7 +37,7 @@ class ImmediateIdSuite extends munit.FunSuite {
   }
 
   test("If a GetsId is present, LazyId has an immediateId") {
-    given lookUp as EagerLookUpOne[AppleId, Apple] = (id) => lookUpApple(id)
+    given lookUp: EagerLookUpOne[AppleId, Apple] = (id) => lookUpApple(id)
     assertEquals(LazyId(AppleId("1")).immediateId, Some(AppleId("1")))
   }
 
@@ -57,7 +57,7 @@ class ImmediateIdSuite extends munit.FunSuite {
   }
   
   test("If a GetsId is present, a completed RefFutureRef containing an incomplete child has no immediateId") {
-    given ec as ExecutionContext = ExecutionContext.global
+    given ec: ExecutionContext = ExecutionContext.global
     
     val incomplete = Promise[Apple]
     val completed = RefFutureRef(Future.successful(RefFuture(incomplete.future)))

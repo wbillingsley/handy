@@ -21,14 +21,14 @@ class IdSuite extends munit.FunSuite {
   }
   
   test("Ids should be able to be looked up using an extension function if a LookUpOne is in scope") {
-    given lookUp as EagerLookUpOne[AppleId, Apple] = (id) => lookUpApple(id)
+    given lookUp: EagerLookUpOne[AppleId, Apple] = (id) => lookUpApple(id)
     
     val id = AppleId("1")
     assertEquals(id.lookUp, RefItself(apples("1")))
   }
 
   test("Ids should be able to be optionally looked up using an extension function if a LookUpOpt is in scope") {
-    given lookUp as EagerLookUpOpt[AppleId, Apple] = (id) => lookUpOptApple(id)
+    given lookUp: EagerLookUpOpt[AppleId, Apple] = (id) => lookUpOptApple(id)
 
     val id = AppleId("1")
     assertEquals(id.lookUpOpt, RefSome(apples("1")))

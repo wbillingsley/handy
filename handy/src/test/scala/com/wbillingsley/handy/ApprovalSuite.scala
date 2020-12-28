@@ -17,7 +17,7 @@ class ApprovalSuite extends munit.FunSuite {
   
   case class Apple(id:AppleId, name:String) extends HasId[AppleId]
   case class AppleId(id:Int) extends Id[Apple, Int]
-  given getAppleId as GetsId[Apple, AppleId] = autoGetsId[Apple, AppleId]
+  given getAppleId:GetsId[Apple, AppleId] = autoGetsId[Apple, AppleId]
   val apples = Map(
     1 -> Apple(AppleId(1), "Royal Gala"),
     2 -> Apple(AppleId(2), "Cox's Orange Pippin"),
@@ -28,7 +28,7 @@ class ApprovalSuite extends munit.FunSuite {
 
   case class Orange(id:OrangeId, name:String) extends HasId[OrangeId]
   case class OrangeId(id:Int) extends Id[Orange, Int]
-  given getOrangeId as GetsId[Orange, OrangeId] = autoGetsId[Orange, OrangeId]
+  given getOrangeId:GetsId[Orange, OrangeId] = autoGetsId[Orange, OrangeId]
   val oranges = Map(
     1 -> Orange(OrangeId(1), "Navel"),
     2 -> Orange(OrangeId(2), "Valencia")
@@ -66,24 +66,24 @@ class ApprovalSuite extends munit.FunSuite {
   }
 
   test("Synchronous approvals should succeed for permitted users") {
-    given lookUpUser as EagerLookUpOne[UserId, User] = (uId) => RefOpt(users.get(uId.id)).require
-    given a as Approval[User] = Approval(LazyId(UserId(2)).toRefOpt)
+    given lookUpUser:EagerLookUpOne[UserId, User] = (uId) => RefOpt(users.get(uId.id)).require
+    given a:Approval[User] = Approval(LazyId(UserId(2)).toRefOpt)
 
     assertEquals(a askOne CanEatOrange(OrangeId(1)), RefItself(Approved("Even users may eat oranges")))
   }
 
   test("Synchronous approvals should fail for non-permitted users") {
-    given lookUpUser as EagerLookUpOne[UserId, User] = (uId) => RefOpt(users.get(uId.id)).require
-    given a as Approval[User] = Approval(LazyId(UserId(1)).toRefOpt)
+    given lookUpUser: EagerLookUpOne[UserId, User] = (uId) => RefOpt(users.get(uId.id)).require
+    given a: Approval[User] = Approval(LazyId(UserId(1)).toRefOpt)
 
     assertEquals(a askOne CanEatOrange(OrangeId(1)), RefFailed(Refused("Odd users may not eat oranges")))
   }
 
   test("Synchronous approvals using permission generators should be considered equal if they have the same id and generator") {
-    given lookUpUser as EagerLookUpOne[UserId, User] = (uId) => RefOpt(users.get(uId.id)).require
-    given lookUpApple as EagerLookUpOne[AppleId, Apple] = (aId) => RefOpt(apples.get(aId.id)).require
+    given lookUpUser: EagerLookUpOne[UserId, User] = (uId) => RefOpt(users.get(uId.id)).require
+    given lookUpApple: EagerLookUpOne[AppleId, Apple] = (aId) => RefOpt(apples.get(aId.id)).require
 
-    given a as Approval[User] = Approval(LazyId(UserId(1)).toRefOpt)
+    given a: Approval[User] = Approval(LazyId(UserId(1)).toRefOpt)
 
     // Check that the two permissions are equal. Note that we have not looked up the apple or resolved either permission.
     // We have to "for" inside the Refs, but it is synchronous in this case
@@ -100,10 +100,10 @@ class ApprovalSuite extends munit.FunSuite {
   }
 
   test("Synchronous approvals using permission generators should not be considered equal if they have different ids but the same generator") {
-    given lookUpUser as EagerLookUpOne[UserId, User] = (uId) => RefOpt(users.get(uId.id)).require
-    given lookUpApple as EagerLookUpOne[AppleId, Apple] = (aId) => RefOpt(apples.get(aId.id)).require
+    given lookUpUser: EagerLookUpOne[UserId, User] = (uId) => RefOpt(users.get(uId.id)).require
+    given lookUpApple: EagerLookUpOne[AppleId, Apple] = (aId) => RefOpt(apples.get(aId.id)).require
 
-    given a as Approval[User] = Approval(LazyId(UserId(1)).toRefOpt)
+    given a: Approval[User] = Approval(LazyId(UserId(1)).toRefOpt)
 
     // Check that the two permissions are equal. Note that we have not looked up the apple or resolved either permission.
     // We have to "for" inside the Refs, but it is synchronous in this case
@@ -120,11 +120,11 @@ class ApprovalSuite extends munit.FunSuite {
   }
 
   test("Synchronous approvals using permission generators should not be considered equal if they have the same id but different generators") {
-    given lookUpUser as EagerLookUpOne[UserId, User] = (uId) => RefOpt(users.get(uId.id)).require
-    given lookUpApple as EagerLookUpOne[AppleId, Apple] = (aId) => RefOpt(apples.get(aId.id)).require
-    given lookUpOrange as EagerLookUpOne[OrangeId, Orange] = (oId) => RefOpt(oranges.get(oId.id)).require
+    given lookUpUser: EagerLookUpOne[UserId, User] = (uId) => RefOpt(users.get(uId.id)).require
+    given lookUpApple: EagerLookUpOne[AppleId, Apple] = (aId) => RefOpt(apples.get(aId.id)).require
+    given lookUpOrange: EagerLookUpOne[OrangeId, Orange] = (oId) => RefOpt(oranges.get(oId.id)).require
 
-    given a as Approval[User] = Approval(LazyId(UserId(1)).toRefOpt)
+    given a: Approval[User] = Approval(LazyId(UserId(1)).toRefOpt)
 
     // Check that the two permissions are equal. Note that we have not looked up the apple or resolved either permission.
     var checked = false

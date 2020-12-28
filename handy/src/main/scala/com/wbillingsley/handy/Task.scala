@@ -16,15 +16,15 @@ implicit object Task {
     def flatMap[A, B](from:Task[A], to: A => To[B]):Result[B]
   }
   
-  given FMTOne as CFMT[Task, Task] {
+  given FMTOne:CFMT[Task, Task] = new CFMT[Task, Task] {
     def flatMap[A, B](from:Task[A], to: A => Task[B]):Task[B] = from.flatMapOne(to)
   }
 
-  given FMTOpt as CFMT[TaskOpt, TaskOpt] {
+  given FMTOpt:CFMT[TaskOpt, TaskOpt] = new CFMT[TaskOpt, TaskOpt] {
     def flatMap[A, B](from:Task[A], to: A => TaskOpt[B]):TaskOpt[B] = from.flatMapOpt(to)
   }
 
-  given FMTMany as CFMT[TaskMany, TaskMany] {
+  given FMTMany:CFMT[TaskMany, TaskMany] = new CFMT[TaskMany, TaskMany] {
     def flatMap[A, B](from:Task[A], to: A => TaskMany[B]):TaskMany[B] = from.flatMapMany(to)
   }
 
@@ -74,11 +74,11 @@ implicit object TaskOpt {
     def flatMap[A, B](from:TaskOpt[A], to: A => To[B]):Result[B]
   }
 
-  given FMTOne as CFMT[Task, TaskOpt] {
+  given FMTOne:CFMT[Task, TaskOpt] = new CFMT[Task, TaskOpt] {
     def flatMap[A, B](from:TaskOpt[A], to: A => Task[B]):TaskOpt[B] = from.flatMapOne(to)
   }
 
-  given FMTOpt as CFMT[TaskOpt, TaskOpt] {
+  given FMTOpt:CFMT[TaskOpt, TaskOpt] = new CFMT[TaskOpt, TaskOpt] {
     def flatMap[A, B](from:TaskOpt[A], to: A => TaskOpt[B]):TaskOpt[B] = from.flatMapOpt(to)
   }
 
@@ -117,15 +117,15 @@ implicit object TaskMany {
     def flatMap[A, B](from:TaskMany[A], to: A => To[B]):Result[B]
   }
 
-  given FMTOne as CFMT[Task, TaskMany] {
+  given FMTOne:CFMT[Task, TaskMany]  = new CFMT[Task, TaskMany] {
     def flatMap[A, B](from:TaskMany[A], to: A => Task[B]):TaskMany[B] = from.flatMapOne(to)
   }
 
-  given FMTOpt as CFMT[TaskOpt, TaskMany] {
+  given FMTOpt:CFMT[TaskOpt, TaskMany] = new CFMT[TaskOpt, TaskMany] {
     def flatMap[A, B](from:TaskMany[A], to: A => TaskOpt[B]):TaskMany[B] = from.flatMapOpt(to)
   }
 
-  given FMTMany as CFMT[TaskMany, TaskMany] {
+  given FMTMany:CFMT[TaskMany, TaskMany] = new CFMT[TaskMany, TaskMany] {
     def flatMap[A, B](from:TaskMany[A], to: A => TaskMany[B]):TaskMany[B] = from.flatMapMany(to)
   }
 

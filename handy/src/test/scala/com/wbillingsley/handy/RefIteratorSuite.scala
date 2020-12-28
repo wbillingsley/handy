@@ -23,7 +23,7 @@ class RefIteratorSuite extends munit.FunSuite {
       }
     }
 
-    given ec as ExecutionContext = ExecutionContext.global
+    given ec: ExecutionContext = ExecutionContext.global
 
     val done = RefIterator.process("")(Naturals(0), count)
     done.toFuture.map(x => assertEquals(x, "I traversed 100000 items"))
@@ -31,7 +31,7 @@ class RefIteratorSuite extends munit.FunSuite {
 
   test("RefConsumer.foldRight on a RefIterableOnce should succeed") {
     val rm = RefIterableOnce(0 to 5)
-    given ec as ExecutionContext = ExecutionContext.global
+    given ec: ExecutionContext = ExecutionContext.global
 
     val folded = RefConsumer.foldLeft(rm)("")({
       (x, y) => x + y
@@ -48,7 +48,7 @@ class RefIteratorSuite extends munit.FunSuite {
       j <- RefIterableOnce(1 to 2)
     yield i * j
 
-    given ec as ExecutionContext = ExecutionContext.global
+    given ec: ExecutionContext = ExecutionContext.global
 
     val folded = RefConsumer.foldLeft(seq)("")({
       (x, y) => x + y

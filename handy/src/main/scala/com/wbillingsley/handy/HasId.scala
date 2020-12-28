@@ -14,7 +14,7 @@ inline def autoGetsId[T <: HasId[K], K] = new GetsId[T, K] {
     case x:K => Some(x)
     case _ => None
   }
-} 
+}
 
 trait HasStringId[T] extends HasId[String] 
 
