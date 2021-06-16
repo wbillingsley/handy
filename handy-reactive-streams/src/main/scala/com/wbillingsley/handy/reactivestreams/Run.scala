@@ -7,6 +7,7 @@ import scala.concurrent.Future
 object Run {
 
   def main(args: Array[String]): Unit = {
+    given ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global
 
     val range = 0 until 100000
     var start = System.currentTimeMillis()

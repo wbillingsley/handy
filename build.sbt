@@ -12,15 +12,18 @@ lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
     "org.scalameta" %% "munit" % "0.7.26" % Test
   ),
-  testFrameworks += new TestFramework("munit.Framework")
+  testFrameworks += new TestFramework("munit.Framework"),
+
+  // Temporarily disable doc generation as it is currently failing with errors from the scaladoc tool.
+  Compile / doc / sources := Seq()
 )
 
 // Bintray settings for publishing releases
 //seq(bintrayPublishSettings:_*)
 
-publishTo in ThisBuild := Some("Hopper snapshots" at "https://hopper.une.edu.au/artifactory/libs-snapshot-local;build.timestamp=" + new java.util.Date().getTime)
+ThisBuild / publishTo := Some("Hopper snapshots" at "https://hopper.une.edu.au/artifactory/libs-snapshot-local;build.timestamp=" + new java.util.Date().getTime)
 
-pomExtra in ThisBuild := (
+ThisBuild / pomExtra := (
   <scm>
     <url>git@github.com:wbillingsley/handy.git</url>
     <connection>scm:git:git@github.com:wbillingsley/handy.git</connection>
