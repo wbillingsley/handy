@@ -4,13 +4,13 @@ import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 lazy val commonSettings = Seq(
   organization := "com.wbillingsley",
   version := "0.11.0-SNAPSHOT",
-  scalaVersion := "3.0.0-M3",
+  scalaVersion := "3.0.0",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature"),
-  crossScalaVersions := Seq("3.0.0-M3"),
+  crossScalaVersions := Seq("3.0.0"),
   licenses := Seq("MIT" -> url("http://www.opensource.org/licenses/mit-license.php")),
   homepage := Some(url("http://github.com/wbillingsley/handy")),
   libraryDependencies ++= Seq(
-    "org.scalameta" %% "munit" % "0.7.20" % Test
+    "org.scalameta" %% "munit" % "0.7.26" % Test
   ),
   testFrameworks += new TestFramework("munit.Framework")
 )
