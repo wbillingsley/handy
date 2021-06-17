@@ -3,7 +3,7 @@ package com.wbillingsley.handy
 /**
  * Indicates that an object has an `id` method that will return an `Id` to it.
  */
-trait HasId[K] {
+trait HasId[+K] {
   def id:K
 }
 
@@ -16,12 +16,10 @@ inline def autoGetsId[T <: HasId[K], K] = new GetsId[T, K] {
   }
 }
 
-trait HasStringId[T] extends HasId[String] 
-
 /**
  * Knows how to get an `Id` from an object
  */
-trait GetsId[T, Key] {
+trait GetsId[-T, +Key] {
   def getId[TT <: T](obj: TT): Option[Key]
 
   /**

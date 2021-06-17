@@ -14,7 +14,7 @@ type LazyLookUpOpt[C, T] = C => TaskOpt[T]
 
 type EagerLookUpMany[C, T] = C => RefMany[T]
 
-trait LookUp[C, T] {
+trait LookUp[-C, +T] {
 
   def eagerOne(id:C): Ref[T]
 
