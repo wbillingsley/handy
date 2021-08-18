@@ -152,7 +152,9 @@ case class RefFutureRefOpt[+T](future: Future[RefOpt[T]])(implicit val execution
   }
   
   override def recoverWith[B >: T](pf: PartialFunction[Throwable, RefOpt[B]]):RefOpt[B] = {
-     RefFutureRefOpt(future.recover(pf))
+    val a = future.map { _ recoverWith pf }
+    val b = a recover pf
+    RefFutureRefOpt(b)
   }
     
   def flatMapOne[B](f: T => Ref[B]):RefOpt[B] = {
