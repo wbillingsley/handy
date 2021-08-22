@@ -140,11 +140,11 @@ case class RefIterableRefOpt[T, C <: IterableOnce[RefOpt[T]]](refs: C) extends R
     */
   override def foldLeft[B](initial: => B)(each: (B, T) => B): Ref[B] = {
     refs.iterator.foldLeft[Ref[B]](RefItself(initial)) { (soFar, ro) =>
-      soFar.flatMapOpt { b =>
-        ro map { t =>
+      soFar.flatMapOne { b =>
+        ro.map({ t =>
           each(b, t)
-        } orElse RefSome(b)
-      }.require
+        }) orElse RefItself(b)
+      }
     }
   }
 

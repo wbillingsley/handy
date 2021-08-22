@@ -47,7 +47,9 @@ object RefIterator {
 
     for {
       now <- done
-      (result, optNextProc) <- processor.process(start, iterator.item)
+      tuple <- processor.process(start, iterator.item)
+      (result, optNextProc) = tuple
+
       recurse:B <- optNextProc match {
         case Some(nextProc) =>
           for

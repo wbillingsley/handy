@@ -60,4 +60,31 @@ class RefIteratorSuite extends munit.FunSuite {
 
   }
 
+  test("RefIterableRefOpt.collect should skip RefNone entries") {
+    given ec: ExecutionContext = ExecutionContext.global
+
+    val ri = RefIterableRefOpt(Seq(
+      RefSome("a"), RefNone, RefSome("b"), RefSome("c"), RefNone
+    ))
+
+    ri.collect.toFuture.map{ s =>
+      assertEquals(s, Seq("a", "b", "c"))
+    }
+  }
+
+  test("RefIterableRef for-comprehensions work using withFilter") {
+    given ec: ExecutionContext = ExecutionContext.global
+
+    val ri = RefIterableRef(Seq(
+      1.itself, 2.itself, 3.itself, 4.itself, 5.itself
+    ))
+
+    val result = (for n <- ri if n % 2 == 0 yield n).collect
+
+    result.toFuture.map{ s =>
+      assertEquals(s, Seq(2, 4))
+    }
+  }
+
+
 }

@@ -164,8 +164,18 @@ trait Ref[+T] extends RSuper[T] {
 
   def foreach[U](func: T => U):Unit 
 
-  /** Enables 'if' and 'match' in for comprehensions. NB, we're being a bit tricky because the return type changes. */
-  def withFilter(pred: T => Boolean):Ref[T] = toRefOpt.withFilter(pred).require
+  /** 
+    * Enables 'if' and 'match' in for comprehensions. NB, we're being a bit tricky because the return type changes.
+    * Ref.withFilter has to produce a RefOpt because otherwise it becomes too easy to make a hard-to-debug mistake.
+    * 
+    * Suppose instead, we produced a RefFailed(NoSuchElementException) for the false case. If that were the case, then
+    * val rm = RefIterableRef(RefItself(3), RefItself(4))
+    * val collected = (for a <- rm if a % 2 == 0 yield a).collect 
+    * In this case, collected would be RefFailed(NoSuchElementException) because we didn't notice we needed to do
+    * val collected = (for a <- rm.toRefOpt if a % 2 == 0 yield a).collect 
+    * to collect just the even ones.
+    */
+  def withFilter(pred: T => Boolean):RefOpt[T] = toRefOpt.withFilter(pred) 
   
   def requiring(pred: T => Boolean, orElse: => RefFailed):Ref[T] = toRefOpt.withFilter(pred).orElse(orElse)
   
